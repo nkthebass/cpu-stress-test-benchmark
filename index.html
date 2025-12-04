@@ -1,0 +1,529 @@
+<html>
+<head>
+<title>CPU Stress and Single Core Benchmark (Async Progress)</title>
+<HTA:APPLICATION
+    ID="oHTA"
+    APPLICATIONNAME="MultiStressController"
+    BORDER="dialog"
+    INNERBORDER="no"
+    SCROLL="no"
+    SINGLEINSTANCE="yes"
+    WINDOWSTATE="normal"
+    WIDTH="800"
+    HEIGHT="480"
+>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f4f8;
+        color: #333;
+        padding: 0; 
+        text-align: center;
+        margin: 0; 
+        display: block; 
+        height: 100%; 
+        overflow: auto; 
+    }
+    .main-wrapper {
+        display: block; 
+        padding: 10px;
+        width: 780px; 
+        margin: 0 auto; 
+        box-sizing: border-box;
+        overflow: hidden; 
+    }
+    .panel {
+        float: left; 
+        width: 370px; 
+        margin-right: 20px; 
+        padding: 20px 15px 15px; 
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
+        display: flex; 
+        flex-direction: column;
+        height: 440px; 
+        box-sizing: border-box;
+        text-align: center;
+    }
+    .right-panel {
+        margin-right: 0;
+    }
+    h1 {
+        font-size: 1.6em;
+        color: #004d99;
+        margin-bottom: 5px; 
+        font-weight: 600;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 10px;
+        width: 100%;
+    }
+    .panel p {
+        margin: 5px 0;
+    }
+    .status-text {
+        margin: 10px 0 10px; 
+        font-size: 1.1em;
+        font-weight: bold;
+        min-height: 20px;
+    }
+    .benchmark-result {
+        flex-grow: 1; 
+        font-size: 1.6em;
+        font-weight: 800;
+        color: #d9534f;
+        white-space: pre-wrap;
+        margin-top: 15px; 
+        min-height: 60px;
+    }
+    .control-group {
+        margin: 10px 0 15px; 
+        display: flex; 
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
+    label {
+        font-weight: 600;
+        color: #555;
+    }
+    select {
+        padding: 8px 15px;
+        border: 1px solid #ccc;
+        border-radius: 6px; /* Rounded Edges */
+        font-size: 1em;
+        background-color: #fff;
+        cursor: pointer;
+    }
+    /* Button Style (All buttons have 8px radius) */
+    .button-group button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 18px; 
+        margin: 5px;
+        border-radius: 8px; /* Rounded Edges applied here */
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+        font-size: 0.95em;
+        font-weight: 700;
+        width: 120px; 
+    }
+    .button-group button:hover {
+        background-color: #0056b3;
+    }
+    .button-group button:active {
+        transform: scale(0.98);
+    }
+    #stopBtn {
+        background-color: #dc3545;
+    }
+    #stopBtn:hover {
+        background-color: #c82333;
+    }
+    #benchmarkBtn {
+        background-color: #007bff; 
+        width: 200px; /* Slightly wider button */
+    }
+    #benchmarkBtn:hover {
+        background-color: #0056b3;
+    }
+    #startBtn:disabled, #pauseResumeBtn:disabled, #stopBtn:disabled, #benchmarkBtn:disabled {
+        background-color: #a0a0a0;
+        cursor: not-allowed;
+    }
+    .note {
+        font-size: 0.8em;
+        color: #888;
+        padding-top: 10px;
+        border-top: 1px solid #f0f0f0;
+        margin-top: 5px; 
+    }
+    
+    /* Progress Bar Styling */
+    .progress-container {
+        width: 90%;
+        height: 25px;
+        background-color: #eee;
+        border-radius: 5px;
+        margin: 20px auto 10px;
+        overflow: hidden;
+        border: 1px solid #ccc;
+        position: relative;
+    }
+    .progress-bar {
+        height: 100%;
+        width: 0%;
+        background-color: #28a745;
+        transition: width 0.3s ease-out;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+    .progress-text {
+        /* FIX: Vertically centers text using line-height equal to container height */
+        position: absolute;
+        width: 100%;
+        height: 100%; 
+        line-height: 25px; /* Matches height of .progress-container */
+        text-align: center;
+        color: #fff; /* White text for contrast */
+        font-weight: bold;
+        z-index: 10;
+        font-size: 0.9em;
+        text-shadow: 0 0 2px rgba(0,0,0,0.5); /* Added shadow for readability */
+    }
+</style>
+<script language="JScript">
+    // --- Global Variables and Constants ---
+    var WshShell = new ActiveXObject("WScript.Shell");
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    
+    // Process and File Identification 
+    var CORE_LOCK_FILE = "core_lock.tmp"; 
+    var TEMP_PS_FILE = "stress_loop.ps1";
+    var STRESS_PS_TITLE = "CPU_STRESS_CORE"; 
+
+    // Benchmark Constants and State for ASYNC operation
+    var BENCHMARK_DURATION_MS = 5000; // 5 seconds
+    var SCORE_SCALING_FACTOR = 100000; 
+    var CHUNK_OPS = 50000; // Operations to perform per setTimeout call
+    
+    var htaDir = ""; 
+    var isStressRunning = false;
+    var isBenchmarkRunning = false;
+    
+    // Asynchronous Benchmark State
+    var benchmarkStartTime = 0;
+    var totalIterations = 0;
+    var benchmarkTimer = null; 
+    
+    // --- PowerShell Script Content (Only for the external Stress Controller) ---
+    function GetPowerShellScript() {
+        // STRESS TEST LOGIC (Infinite, Pausable)
+        var script = "$Host.UI.RawUI.WindowTitle='" + STRESS_PS_TITLE + "'; ";
+        script += "$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition; ";
+        script += "$lockFilePath = Join-Path $scriptDir '" + CORE_LOCK_FILE + "'; ";
+        script += "while ($true) { ";
+        script += "if (Test-Path $lockFilePath) { Start-Sleep -Milliseconds 50 } else { ";
+        
+        // Optimized, aggressive work block for 100% CPU utilization
+        script += "$endTime = (Get-Date).AddMilliseconds(200); ";
+        script += "while((Get-Date) -lt $endTime) { [void] [Math]::Sqrt([Math]::Abs((Get-Random))); }";
+        
+        script += "}}"; 
+        
+        return script;
+    }
+    
+    // --- General Status Functions ---
+    function UpdateStatus(msg, statusType, elementId) {
+        var el = document.getElementById(elementId);
+        el.innerText = msg;
+        
+        switch(statusType) {
+            case "active":
+                el.style.color = "#28a745"; 
+                break;
+            case "paused":
+                el.style.color = "#ffc107"; 
+                break;
+            case "benchmarking":
+                el.style.color = "#004d99";
+                break;
+            default: 
+                el.style.color = "#0056b3"; 
+                break;
+        }
+    }
+
+    // --- Worker Management Helper (Only for Stress Controller) ---
+    function LaunchStressWorkers(numProcesses) {
+        var psFilePath = htaDir + "\\" + TEMP_PS_FILE;
+
+        try {
+            var psContent = GetPowerShellScript(); 
+            var psFile = fso.CreateTextFile(psFilePath, true); 
+            psFile.WriteLine(psContent);
+            psFile.Close();
+        } catch (e) {
+            if (typeof console !== 'undefined' && console.error) console.error("Error creating PowerShell script file: " + e.description);
+            return false;
+        }
+        
+        for (var i = 1; i <= numProcesses; i++) {
+            var fullCommand = "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"" + psFilePath + "\" -WindowStyle Hidden";
+            WshShell.Run(fullCommand, 0, false); 
+        }
+
+        return true;
+    }
+    
+    function StopWorkers(psTitle) {
+        var taskKillCommand = "taskkill /F /FI \"WINDOWTITLE eq " + psTitle + "*\" /T";
+        WshShell.Run(taskKillCommand, 0, true);
+        WshShell.Run(taskKillCommand, 0, true);
+        WshShell.Run(taskKillCommand, 0, true);
+    }
+    
+    // --- Stress Controller Functions ---
+    
+    function StartStress() {
+        if (isStressRunning) return;
+
+        var threadSelect = document.getElementById("threadCountSelect");
+        var numProcesses = parseInt(threadSelect.value, 10);
+        
+        if (fso.FileExists(htaDir + "\\" + CORE_LOCK_FILE)) { fso.DeleteFile(htaDir + "\\" + CORE_LOCK_FILE, true); }
+
+        UpdateStatus("Starting " + numProcesses + " high-intensity processes...", "active", "statusText");
+        
+        if (!LaunchStressWorkers(numProcesses)) return;
+
+        isStressRunning = true;
+        document.getElementById("startBtn").disabled = true;
+        document.getElementById("pauseResumeBtn").disabled = false;
+        document.getElementById("stopBtn").disabled = false;
+        document.getElementById("threadCountSelect").disabled = true;
+        document.getElementById("pauseResumeBtn").innerText = "Pause"; 
+        UpdateStatus(numProcesses + " Processes Active (Max Utilization).", "active", "statusText");
+        document.getElementById("processCount").innerText = "Running exactly " + numProcesses + " simultaneous stress processes.";
+    }
+
+    function TogglePauseResume() {
+        if (!isStressRunning) return;
+
+        var lockFilePath = htaDir + "\\" + CORE_LOCK_FILE; 
+        var isPaused = fso.FileExists(lockFilePath);
+        var numProcesses = document.getElementById("threadCountSelect").value;
+        
+        if (isPaused) {
+            fso.DeleteFile(lockFilePath, true); 
+            document.getElementById("pauseResumeBtn").innerText = "Resume"; 
+            UpdateStatus(numProcesses + " Processes RESUMED to Max Utilization.", "active", "statusText");
+        } else {
+            var lockFile = fso.CreateTextFile(lockFilePath, true); 
+            lockFile.WriteLine("PAUSE");
+            lockFile.Close();
+            
+            document.getElementById("pauseResumeBtn").innerText = "Resume"; 
+            UpdateStatus(numProcesses + " Processes PAUSED (Low utilization).", "paused", "statusText");
+        }
+    }
+
+    function StopStress() {
+        UpdateStatus("Stopping all stress processes...", "ready", "statusText");
+        StopWorkers(STRESS_PS_TITLE);
+        
+        if (fso.FileExists(htaDir + "\\" + CORE_LOCK_FILE)) { fso.DeleteFile(htaDir + "\\" + CORE_LOCK_FILE, true); }
+        
+        isStressRunning = false;
+        document.getElementById("startBtn").disabled = false;
+        document.getElementById("pauseResumeBtn").disabled = true;
+        document.getElementById("stopBtn").disabled = true;
+        document.getElementById("threadCountSelect").disabled = false;
+        
+        var numProcesses = document.getElementById("threadCountSelect").value;
+        document.getElementById("processCount").innerText = "Ready to launch exactly " + numProcesses + " simultaneous stress processes.";
+        UpdateStatus("Test Stopped. Ready to begin.", "ready", "statusText");
+    }
+    
+    // --- BENCHMARK LOGIC: ASYNCHRONOUS IMPLEMENTATION (with Progress Bar) ---
+
+    function StartBenchmark() {
+        if (isBenchmarkRunning) return;
+        
+        // 1. Setup GUI 
+        isBenchmarkRunning = true;
+        document.getElementById("benchmarkBtn").disabled = true;
+        document.getElementById("benchmarkResult").innerHTML = ""; // Clear result text
+        UpdateStatus("Executing single core benchmark...", "benchmarking", "benchmarkStatus");
+        
+        // Reset Progress Bar
+        document.getElementById("progressBar").style.width = '0%';
+        document.getElementById("progressText").innerText = '0%';
+
+        // 2. Initialize State
+        totalIterations = 0;
+        benchmarkStartTime = new Date().getTime();
+        
+        // 3. Start the iterative process
+        runChunk();
+    }
+    
+    function runChunk() {
+        if (!isBenchmarkRunning) return;
+
+        var currentTime = new Date().getTime();
+        var elapsedTime = currentTime - benchmarkStartTime;
+        var progressPercent = Math.min(100, (elapsedTime / BENCHMARK_DURATION_MS) * 100);
+
+        // 1. Check for end condition
+        if (elapsedTime >= BENCHMARK_DURATION_MS) {
+            document.getElementById("progressBar").style.width = '100%';
+            document.getElementById("progressText").innerText = '100% - Calculating Score...';
+            // Final calculation and cleanup happens in FinishBenchmark
+            setTimeout(function() { FinishBenchmark(totalIterations); }, 10);
+            return;
+        }
+
+        // 2. Perform intensive calculation chunk
+        var chunkIterations = 0;
+        var chunkEndTime = currentTime + 10; // Allocate max 10ms for this chunk
+        
+        while (new Date().getTime() < chunkEndTime && chunkIterations < CHUNK_OPS) {
+            chunkIterations++;
+            // The actual computational work
+            Math.sqrt(Math.abs(Math.random())); 
+        }
+        totalIterations += chunkIterations;
+        
+        // 3. Update UI
+        document.getElementById("progressBar").style.width = progressPercent.toFixed(0) + '%';
+        document.getElementById("progressText").innerText = progressPercent.toFixed(0) + '%';
+        
+        // 4. Schedule the next chunk (allows UI to update in between)
+        benchmarkTimer = setTimeout(runChunk, 10); // Schedule next chunk after 10ms pause
+    }
+    
+    function FinishBenchmark(iterations) {
+        
+        try {
+            // 1. Calculate score (Total Iterations / 100,000)
+            var score = iterations / SCORE_SCALING_FACTOR;
+            
+            // 2. Format score for display
+            var displayScore = score.toFixed(2);
+            if (score > 0 && score < 1) {
+                displayScore = score.toFixed(4); 
+            }
+            
+            // 3. Update result text
+            document.getElementById("benchmarkResult").innerHTML = 
+                "CPU Performance Score (Single Core):<br>" +
+                "<span style='font-size: 2.5em; color: #004d99;'>" + displayScore + "</span>" +
+                "<div style='font-size: 0.9em; font-weight: 500; margin-top: 10px; color: #555;'>" +
+                "Total Operations: " + iterations.toLocaleString() +
+                "<br>Scaling Factor: " + SCORE_SCALING_FACTOR.toLocaleString() +
+                " (Score = Ops / 100,000)" +
+                "</div>";
+                
+            if (iterations == 0) {
+                document.getElementById("benchmarkResult").innerHTML += 
+                    "<div style='font-size: 0.8em; color: #dc3545; margin-top: 5px;'>" +
+                    "**CRITICAL ERROR**: The benchmark failed to register operations. Check sandboxing settings." +
+                    "</div>";
+            }
+
+        } catch (e) {
+            if (typeof console !== 'undefined' && console.error) console.error("Fatal error during benchmark scoring: " + e.description);
+            document.getElementById("benchmarkResult").innerText = "Fatal error calculating score.";
+        } finally {
+            // 4. Reset GUI state
+            clearTimeout(benchmarkTimer);
+            isBenchmarkRunning = false;
+            document.getElementById("benchmarkBtn").disabled = false;
+            UpdateStatus("Ready to run benchmark.", "ready", "benchmarkStatus");
+        }
+    }
+
+    // --- Initialization on load / unload ---
+
+    function Window_OnLoad() {
+        var W = 800; 
+        var H = 480; 
+        var x = (screen.availWidth / 2) - (W / 2);
+        var y = (screen.availHeight / 2) - (H / 2);
+        window.moveTo(x, y);
+
+        try {
+            htaDir = fso.GetParentFolderName(document.location.pathname); 
+        } catch(e) {
+            htaDir = WshShell.CurrentDirectory; 
+        }
+
+        StopStress(); 
+        
+        document.getElementById("progressBar").style.width = '0%';
+        document.getElementById("progressText").innerText = '0%';
+    }
+
+    function Window_OnUnload() {
+        StopWorkers(STRESS_PS_TITLE);
+        clearTimeout(benchmarkTimer);
+    }
+</script>
+</head>
+
+<body onload="Window_OnLoad()" onunload="Window_OnUnload()">
+    <div class="main-wrapper">
+        <!-- ============================================== -->
+        <!-- LEFT PANEL: CONTINUOUS STRESS CONTROLLER -->
+        <!-- ============================================== -->
+        <div class="panel stress-section">
+            <h1>Continuous Stress Controller</h1>
+            <p>Launches **external** workers for max load and paused states.</p>
+            
+            <div class="control-group">
+                <label for="threadCountSelect">Threads to Stress:</label>
+                <select id="threadCountSelect">
+                    <option value="2">2 Threads</option>
+                    <option value="4">4 Threads</option>
+                    <option value="8" selected>8 Threads (Default)</option>
+                    <option value="16">16 Threads</option>
+                </select>
+            </div>
+            
+            <p class="status-text" id="processCount">Ready to launch exactly 8 simultaneous stress processes.</p>
+            
+            <div class="status-text" id="statusText">Test Stopped. Ready to begin.</div>
+            
+            <div class="button-group" style="margin-top: 50px;">
+                <button id="startBtn" onclick="StartStress()">Start</button>
+                <button id="pauseResumeBtn" onclick="TogglePauseResume()" disabled>Pause</button>
+                <button id="stopBtn" onclick="StopStress()" disabled>Stop All</button>
+            </div>
+            
+            <p class="note">
+                *The stress test uses external processes and may not function in heavily sandboxed environments.
+            </p>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- RIGHT PANEL: SINGLE-CORE BENCHMARK -->
+        <!-- ============================================== -->
+        <div class="panel benchmark-section right-panel">
+            <!-- UPDATED TITLE -->
+            <h1>Single Core Benchmark</h1>
+            <p>Runs a 5-second **internal** JScript loop. Score is normalized (Raw Ops / 100,000).</p>
+            
+            <div class="control-group" style="margin-top: 20px;">
+                <!-- UPDATED BUTTON TEXT -->
+                <button id="benchmarkBtn" onclick="StartBenchmark()" style="width: 200px;">
+                    Run Benchmark
+                </button>
+            </div>
+
+            <!-- Progress Bar HTML -->
+            <div class="progress-container">
+                <!-- Progress text is positioned absolutely and centered vertically via line-height -->
+                <div id="progressText" class="progress-text">0%</div>
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+
+            <div class="status-text" id="benchmarkStatus">Ready to run benchmark.</div>
+            
+            <div class="benchmark-result" id="benchmarkResult">
+                Press 'Run Benchmark' to start.
+            </div>
+
+            <p class="note" style="margin-top: 10px;">
+                *The score reflects single-core performance within the HTA environment.
+            </p>
+            <p class="note">
+                **Note:** The benchmark now runs asynchronously, allowing the progress bar to update.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
