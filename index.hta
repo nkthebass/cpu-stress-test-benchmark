@@ -1,529 +1,690 @@
+<!doctype html>
 <html>
 <head>
-<title>CPU Stress and Single Core Benchmark (Async Progress)</title>
-<HTA:APPLICATION
-    ID="oHTA"
-    APPLICATIONNAME="MultiStressController"
-    BORDER="dialog"
-    INNERBORDER="no"
-    SCROLL="no"
-    SINGLEINSTANCE="yes"
-    WINDOWSTATE="normal"
-    WIDTH="800"
-    HEIGHT="480"
->
+<meta charset="utf-8" />
+<title>CPU Performance Utility (Stress & Stable Benchmark)</title>
 <style>
+    /* General Styles */
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f0f4f8;
+        background-color: #f0f0f0; 
         color: #333;
-        padding: 0; 
-        text-align: center;
-        margin: 0; 
-        display: block; 
-        height: 100%; 
-        overflow: auto; 
+        padding: 15px;
+        margin: 0;
+        min-height: 100vh;
+        overflow-y: auto; 
+        position: relative; 
     }
-    .main-wrapper {
-        display: block; 
-        padding: 10px;
-        width: 780px; 
-        margin: 0 auto; 
-        box-sizing: border-box;
-        overflow: hidden; 
-    }
-    .panel {
-        float: left; 
-        width: 370px; 
-        margin-right: 20px; 
-        padding: 20px 15px 15px; 
+    
+    .main-container {
+        width: 600px; 
+        position: absolute;
+        left: 50%; 
+        margin-left: -300px; 
         background-color: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
-        display: flex; 
+        border-radius: 5px; 
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        box-sizing: border-box;
+        text-align: left;
+    }
+    
+    .panel { padding: 20px 0; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #e0e0e0; }
+    .panel:last-child { border-bottom: none; margin-bottom: 0; }
+
+    h1 { font-size: 1.4em; color: #0056b3; margin-bottom: 5px; padding-bottom: 8px; font-weight: 700; text-transform: uppercase; }
+    .status-text { margin: 15px 0 25px; font-size: 1.1em; font-weight: bold; min-height: 20px; color: #0056b3; }
+    .button-group { display: flex; justify-content: center; gap: 10px; }
+    .button-group button { background-color: #007bff; color: white; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s, transform 0.1s; font-size: 0.9em; font-weight: 600; min-width: 100px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);} 
+    .button-group button:hover { background-color: #0056b3; }
+    .button-group button:active { transform: scale(0.98); }
+    #stopBtn { background-color: #dc3545; }
+    #stopBtn:hover { background-color: #c82333; }
+    button:disabled { background-color: #a0a0a0 !important; cursor: not-allowed; box-shadow: none; }
+
+    .run-count-control { margin-bottom: 20px; display: flex; align-items: center; justify-content: center; }
+    #runCountInput { padding: 5px 10px; border-radius: 3px; border: 1px solid #ccc; margin-left: 10px; font-size: 1em; width: 50px; text-align: center; }
+    .score-display { font-size: 3em; font-weight: 800; color: #0056b3; margin: 15px 0; display: block; }
+
+    .static-info-container { margin-top: 25px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; text-align: left; }
+    .static-info-container h2 { font-size: 1.1em; color: #0056b3; margin-bottom: 10px; border-bottom: 1px dashed #cceeff; padding-bottom: 5px; }
+    .static-specs { display: flex; justify-content: space-around; margin-top: 10px; font-size: 0.9em; }
+    .static-specs div { background-color: #e6ffe6; padding: 6px 10px; border-radius: 3px; flex: 1; margin: 0 5px; text-align: center; }
+    .static-specs strong { display: block; font-size: 1em; color: #28a745; }
+
+    .progress-bar-wrapper { width: 80%; margin: 20px auto 0; background-color: #e9ecef; border-radius: 10px; overflow: hidden; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); position: relative; }
+    .progress-bar { height: 20px; background-color: #17a2b8; width: 0%; transition: width 0.05s linear; }
+    #progressText { position: absolute; width: 100%; text-align: center; line-height: 20px; color: #000; font-weight: 700; top: 0; font-size: 0.9em; z-index: 10; }
+    /* Sidebar Toggle Buttons */
+    .sidebar-toggle-row {
+        display: flex;
         flex-direction: column;
-        height: 440px; 
-        box-sizing: border-box;
-        text-align: center;
+        gap: 0;
+        position: fixed;
+        right: 0;
+        top: 40%;
+        z-index: 9999;
     }
-    .right-panel {
-        margin-right: 0;
-    }
-    h1 {
-        font-size: 1.6em;
-        color: #004d99;
-        margin-bottom: 5px; 
-        font-weight: 600;
-        border-bottom: 2px solid #e0e0e0;
-        padding-bottom: 10px;
-        width: 100%;
-    }
-    .panel p {
-        margin: 5px 0;
-    }
-    .status-text {
-        margin: 10px 0 10px; 
-        font-size: 1.1em;
-        font-weight: bold;
-        min-height: 20px;
-    }
-    .benchmark-result {
-        flex-grow: 1; 
-        font-size: 1.6em;
-        font-weight: 800;
-        color: #d9534f;
-        white-space: pre-wrap;
-        margin-top: 15px; 
-        min-height: 60px;
-    }
-    .control-group {
-        margin: 10px 0 15px; 
-        display: flex; 
-        align-items: center;
-        justify-content: center;
-        gap: 15px;
-    }
-    label {
-        font-weight: 600;
-        color: #555;
-    }
-    select {
-        padding: 8px 15px;
-        border: 1px solid #ccc;
-        border-radius: 6px; /* Rounded Edges */
-        font-size: 1em;
-        background-color: #fff;
-        cursor: pointer;
-    }
-    /* Button Style (All buttons have 8px radius) */
-    .button-group button {
-        background-color: #007bff;
-        color: white;
+
+    .sidebar-toggle-row button {
+        background: #007bff;
+        color: #fff;
+        padding: 8px 10px;
         border: none;
-        padding: 10px 18px; 
-        margin: 5px;
-        border-radius: 8px; /* Rounded Edges applied here */
         cursor: pointer;
-        transition: background-color 0.2s, transform 0.1s;
-        font-size: 0.95em;
         font-weight: 700;
-        width: 120px; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: background 0.2s;
     }
-    .button-group button:hover {
-        background-color: #0056b3;
-    }
-    .button-group button:active {
-        transform: scale(0.98);
-    }
-    #stopBtn {
-        background-color: #dc3545;
-    }
-    #stopBtn:hover {
-        background-color: #c82333;
-    }
-    #benchmarkBtn {
-        background-color: #007bff; 
-        width: 200px; /* Slightly wider button */
-    }
-    #benchmarkBtn:hover {
-        background-color: #0056b3;
-    }
-    #startBtn:disabled, #pauseResumeBtn:disabled, #stopBtn:disabled, #benchmarkBtn:disabled {
-        background-color: #a0a0a0;
-        cursor: not-allowed;
-    }
-    .note {
-        font-size: 0.8em;
-        color: #888;
-        padding-top: 10px;
-        border-top: 1px solid #f0f0f0;
-        margin-top: 5px; 
-    }
-    
-    /* Progress Bar Styling */
-    .progress-container {
-        width: 90%;
-        height: 25px;
-        background-color: #eee;
-        border-radius: 5px;
-        margin: 20px auto 10px;
-        overflow: hidden;
-        border: 1px solid #ccc;
-        position: relative;
-    }
-    .progress-bar {
-        height: 100%;
-        width: 0%;
-        background-color: #28a745;
-        transition: width 0.3s ease-out;
-        position: absolute;
+
+    .sidebar-toggle-row button:first-child { border-top-left-radius: 6px; }
+    .sidebar-toggle-row button:last-child { border-bottom-left-radius: 6px; }
+    .sidebar-toggle-row button.active { background: #0056b3; }
+    .sidebar-toggle-row button:hover { background: #0056b3; }
+
+    .custom-sidebar {
+        position: fixed;
+        right: 0;
         top: 0;
-        left: 0;
+        height: 100%;
+        width: 320px;
+        max-width: 90%;
+        background: #ffffff;
+        box-shadow: -6px 0 18px rgba(0,0,0,0.15);
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        z-index: 9998;
+        padding: 18px;
+        box-sizing: border-box;
+        overflow-y: auto;
     }
-    .progress-text {
-        /* FIX: Vertically centers text using line-height equal to container height */
-        position: absolute;
-        width: 100%;
-        height: 100%; 
-        line-height: 25px; /* Matches height of .progress-container */
-        text-align: center;
-        color: #fff; /* White text for contrast */
-        font-weight: bold;
-        z-index: 10;
-        font-size: 0.9em;
-        text-shadow: 0 0 2px rgba(0,0,0,0.5); /* Added shadow for readability */
+
+    .custom-sidebar.open { transform: translateX(0%); }
+
+    .custom-sidebar h3 { margin-top: 0; color: #0056b3; }
+    .custom-sidebar label { display: block; margin-top: 10px; font-weight: 600; font-size: 0.95em; }
+    .custom-sidebar input[type="color"] { margin-top: 6px; width: 60px; height: 34px; border: none; padding: 0; background: none; cursor: pointer; }
+    .custom-sidebar .preset-row { display:flex; gap:8px; margin-top:10px; }
+    .custom-sidebar button { margin-top: 12px; padding: 8px 10px; border-radius:4px; border:none; cursor:pointer; }
+    .custom-sidebar .save-btn { background:#28a745; color:#fff; }
+    .custom-sidebar .reset-btn { background:#dc3545; color:#fff; margin-left:8px; }
+
+    /* Benchmarks Sidebar */
+    .benchmarks-sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 320px;
+        max-width: 90%;
+        background: #ffffff;
+        box-shadow: -6px 0 18px rgba(0,0,0,0.15);
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        z-index: 9998;
+        padding: 18px;
+        box-sizing: border-box;
+        overflow-y: auto;
     }
+
+    .benchmarks-sidebar.open { transform: translateX(0%); }
+    .benchmarks-sidebar h3 { margin-top: 0; color: #0056b3; }
+    .benchmarks-sidebar canvas { max-width: 100%; margin-top: 12px; }
+
 </style>
-<script language="JScript">
-    // --- Global Variables and Constants ---
-    var WshShell = new ActiveXObject("WScript.Shell");
-    var fso = new ActiveXObject("Scripting.FileSystemObject");
-    
-    // Process and File Identification 
-    var CORE_LOCK_FILE = "core_lock.tmp"; 
-    var TEMP_PS_FILE = "stress_loop.ps1";
-    var STRESS_PS_TITLE = "CPU_STRESS_CORE"; 
 
-    // Benchmark Constants and State for ASYNC operation
-    var BENCHMARK_DURATION_MS = 5000; // 5 seconds
-    var SCORE_SCALING_FACTOR = 100000; 
-    var CHUNK_OPS = 50000; // Operations to perform per setTimeout call
-    
-    var htaDir = ""; 
-    var isStressRunning = false;
-    var isBenchmarkRunning = false;
-    
-    // Asynchronous Benchmark State
-    var benchmarkStartTime = 0;
-    var totalIterations = 0;
-    var benchmarkTimer = null; 
-    
-    // --- PowerShell Script Content (Only for the external Stress Controller) ---
-    function GetPowerShellScript() {
-        // STRESS TEST LOGIC (Infinite, Pausable)
-        var script = "$Host.UI.RawUI.WindowTitle='" + STRESS_PS_TITLE + "'; ";
-        script += "$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition; ";
-        script += "$lockFilePath = Join-Path $scriptDir '" + CORE_LOCK_FILE + "'; ";
-        script += "while ($true) { ";
-        script += "if (Test-Path $lockFilePath) { Start-Sleep -Milliseconds 50 } else { ";
-        
-        // Optimized, aggressive work block for 100% CPU utilization
-        script += "$endTime = (Get-Date).AddMilliseconds(200); ";
-        script += "while((Get-Date) -lt $endTime) { [void] [Math]::Sqrt([Math]::Abs((Get-Random))); }";
-        
-        script += "}}"; 
-        
-        return script;
-    }
-    
-    // --- General Status Functions ---
-    function UpdateStatus(msg, statusType, elementId) {
-        var el = document.getElementById(elementId);
-        el.innerText = msg;
-        
-        switch(statusType) {
-            case "active":
-                el.style.color = "#28a745"; 
-                break;
-            case "paused":
-                el.style.color = "#ffc107"; 
-                break;
-            case "benchmarking":
-                el.style.color = "#004d99";
-                break;
-            default: 
-                el.style.color = "#0056b3"; 
-                break;
+<script>
+// Bridge helpers replacing ActiveX/HTA APIs with host calls (WebView2)
+var CORE_LOCK_FILE = "core_lock.tmp";
+var TEMP_PS_FILE = "stress_loop.ps1";
+var htaDir = "";
+
+// Message-based bridge using unique ids
+function hostInvoke(cmd, args) {
+    return new Promise(function (resolve, reject) {
+        var id = Math.random().toString(36).slice(2);
+        function listener(e) {
+            try {
+                var m = e.data;
+                if (!m) return;
+                if (m.replyTo === cmd && m.id === id) {
+                    window.chrome.webview.removeEventListener('message', listener);
+                    resolve(m.result);
+                }
+            } catch (err) { }
         }
-    }
+        window.chrome.webview.addEventListener('message', listener);
+        window.chrome.webview.postMessage({ cmd: cmd, args: args || {}, id: id });
+    });
+}
 
-    // --- Worker Management Helper (Only for Stress Controller) ---
-    function LaunchStressWorkers(numProcesses) {
-        var psFilePath = htaDir + "\\" + TEMP_PS_FILE;
-
-        try {
-            var psContent = GetPowerShellScript(); 
-            var psFile = fso.CreateTextFile(psFilePath, true); 
-            psFile.WriteLine(psContent);
-            psFile.Close();
-        } catch (e) {
-            if (typeof console !== 'undefined' && console.error) console.error("Error creating PowerShell script file: " + e.description);
-            return false;
+// Also accept host's init message
+window.chrome && window.chrome.webview && window.chrome.webview.addEventListener('message', function (e) {
+    try {
+        var m = e.data;
+        if (m && m.cmd === 'init' && m.appDir) {
+            htaDir = m.appDir;
         }
-        
-        for (var i = 1; i <= numProcesses; i++) {
-            var fullCommand = "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"" + psFilePath + "\" -WindowStyle Hidden";
-            WshShell.Run(fullCommand, 0, false); 
-        }
+    } catch (err) { }
+});
 
-        return true;
-    }
-    
-    function StopWorkers(psTitle) {
-        var taskKillCommand = "taskkill /F /FI \"WINDOWTITLE eq " + psTitle + "*\" /T";
-        WshShell.Run(taskKillCommand, 0, true);
-        WshShell.Run(taskKillCommand, 0, true);
-        WshShell.Run(taskKillCommand, 0, true);
-    }
-    
-    // --- Stress Controller Functions ---
-    
-    function StartStress() {
-        if (isStressRunning) return;
+function UpdateStatus(id, msg, color) {
+    document.getElementById(id).innerText = msg;
+    document.getElementById(id).style.color = color;
+}
 
-        var threadSelect = document.getElementById("threadCountSelect");
-        var numProcesses = parseInt(threadSelect.value, 10);
-        
-        if (fso.FileExists(htaDir + "\\" + CORE_LOCK_FILE)) { fso.DeleteFile(htaDir + "\\" + CORE_LOCK_FILE, true); }
+function GetTotalRuns() { var inputVal = parseInt(document.getElementById("runCountInput").value, 10); return Math.max(1, isNaN(inputVal) ? 1 : inputVal); }
 
-        UpdateStatus("Starting " + numProcesses + " high-intensity processes...", "active", "statusText");
-        
-        if (!LaunchStressWorkers(numProcesses)) return;
+function UpdateThreadAndRunCountStatus() {
+    var selector = document.getElementById("threadSelector");
+    var numThreads = selector ? selector.value : 8;
+    document.getElementById("processCount").innerText = "Current Stress Thread Target: " + numThreads + " processes.";
+    var totalRuns = GetTotalRuns();
+    if (!is_benchmark_running) { UpdateStatus("benchStatus", "Ready for " + totalRuns + " runs (each " + BENCHMARK_CHUNK_DURATION + " seconds).", "#0056b3"); }
+}
 
-        isStressRunning = true;
-        document.getElementById("startBtn").disabled = true;
-        document.getElementById("pauseResumeBtn").disabled = false;
-        document.getElementById("stopBtn").disabled = false;
-        document.getElementById("threadCountSelect").disabled = true;
-        document.getElementById("pauseResumeBtn").innerText = "Pause"; 
-        UpdateStatus(numProcesses + " Processes Active (Max Utilization).", "active", "statusText");
-        document.getElementById("processCount").innerText = "Running exactly " + numProcesses + " simultaneous stress processes.";
-    }
-
-    function TogglePauseResume() {
-        if (!isStressRunning) return;
-
-        var lockFilePath = htaDir + "\\" + CORE_LOCK_FILE; 
-        var isPaused = fso.FileExists(lockFilePath);
-        var numProcesses = document.getElementById("threadCountSelect").value;
-        
-        if (isPaused) {
-            fso.DeleteFile(lockFilePath, true); 
-            document.getElementById("pauseResumeBtn").innerText = "Resume"; 
-            UpdateStatus(numProcesses + " Processes RESUMED to Max Utilization.", "active", "statusText");
-        } else {
-            var lockFile = fso.CreateTextFile(lockFilePath, true); 
-            lockFile.WriteLine("PAUSE");
-            lockFile.Close();
-            
-            document.getElementById("pauseResumeBtn").innerText = "Resume"; 
-            UpdateStatus(numProcesses + " Processes PAUSED (Low utilization).", "paused", "statusText");
-        }
-    }
-
-    function StopStress() {
-        UpdateStatus("Stopping all stress processes...", "ready", "statusText");
-        StopWorkers(STRESS_PS_TITLE);
-        
-        if (fso.FileExists(htaDir + "\\" + CORE_LOCK_FILE)) { fso.DeleteFile(htaDir + "\\" + CORE_LOCK_FILE, true); }
-        
-        isStressRunning = false;
-        document.getElementById("startBtn").disabled = false;
-        document.getElementById("pauseResumeBtn").disabled = true;
-        document.getElementById("stopBtn").disabled = true;
-        document.getElementById("threadCountSelect").disabled = false;
-        
-        var numProcesses = document.getElementById("threadCountSelect").value;
-        document.getElementById("processCount").innerText = "Ready to launch exactly " + numProcesses + " simultaneous stress processes.";
-        UpdateStatus("Test Stopped. Ready to begin.", "ready", "statusText");
-    }
-    
-    // --- BENCHMARK LOGIC: ASYNCHRONOUS IMPLEMENTATION (with Progress Bar) ---
-
-    function StartBenchmark() {
-        if (isBenchmarkRunning) return;
-        
-        // 1. Setup GUI 
-        isBenchmarkRunning = true;
-        document.getElementById("benchmarkBtn").disabled = true;
-        document.getElementById("benchmarkResult").innerHTML = ""; // Clear result text
-        UpdateStatus("Executing single core benchmark...", "benchmarking", "benchmarkStatus");
-        
-        // Reset Progress Bar
-        document.getElementById("progressBar").style.width = '0%';
-        document.getElementById("progressText").innerText = '0%';
-
-        // 2. Initialize State
-        totalIterations = 0;
-        benchmarkStartTime = new Date().getTime();
-        
-        // 3. Start the iterative process
-        runChunk();
-    }
-    
-    function runChunk() {
-        if (!isBenchmarkRunning) return;
-
-        var currentTime = new Date().getTime();
-        var elapsedTime = currentTime - benchmarkStartTime;
-        var progressPercent = Math.min(100, (elapsedTime / BENCHMARK_DURATION_MS) * 100);
-
-        // 1. Check for end condition
-        if (elapsedTime >= BENCHMARK_DURATION_MS) {
-            document.getElementById("progressBar").style.width = '100%';
-            document.getElementById("progressText").innerText = '100% - Calculating Score...';
-            // Final calculation and cleanup happens in FinishBenchmark
-            setTimeout(function() { FinishBenchmark(totalIterations); }, 10);
+// --- WMI replacement: ask host for CPU info ---
+function StartStaticInfoFetch() {
+    hostInvoke('getCpuInfo', {}).then(function (proc) {
+        if (!proc) {
+            document.getElementById("cpuModel").innerText = "WMI Error: Cannot Fetch Static CPU Info";
+            document.getElementById("cpuModel").style.color = "#dc3545";
             return;
         }
+        document.getElementById("cpuModel").innerText = proc.Name;
+        document.getElementById("cpuCores").innerText = proc.NumberOfCores;
+        document.getElementById("cpuThreads").innerText = proc.ThreadCount;
+        var maxClockGhz = (proc.MaxClockSpeed / 1000);
+        document.getElementById("cpuClockMax").innerText = maxClockGhz.toFixed(1) + " GHz";
+    }).catch(function () {
+        document.getElementById("cpuModel").innerText = "WMI Service Failed to initialize.";
+        document.getElementById("cpuModel").style.color = "#dc3545";
+    });
+}
 
-        // 2. Perform intensive calculation chunk
-        var chunkIterations = 0;
-        var chunkEndTime = currentTime + 10; // Allocate max 10ms for this chunk
-        
-        while (new Date().getTime() < chunkEndTime && chunkIterations < CHUNK_OPS) {
-            chunkIterations++;
-            // The actual computational work
-            Math.sqrt(Math.abs(Math.random())); 
+// --- File & process helpers using host ---
+function fileExists(path) { return hostInvoke('fileExists', { path: path }); }
+function deleteFile(path) { return hostInvoke('deleteFile', { path: path }); }
+function writeFile(path, content) { return hostInvoke('writeFile', { path: path, content: content }); }
+function runProcess(cmd, hidden, wait) { return hostInvoke('runProcess', { cmd: cmd, hidden: !!hidden, wait: !!wait }); }
+
+// --- STRESS FUNCTIONS (adapted) ---
+function StartStress() {
+    if (is_benchmark_running) { UpdateStatus("stressStatus", "Please stop the Single Core Benchmark before starting the Stress Test.", "#dc3545"); return; }
+    var numProcesses = parseInt(document.getElementById("threadSelector").value);
+
+    UpdateStatus("stressStatus", "Starting " + numProcesses + " high-intensity processes...", "#0056b3");
+
+    hostInvoke('startStress', { numProcesses: numProcesses }).then(function (res) {
+        if (res === true) {
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("pauseResumeBtn").disabled = false;
+            document.getElementById("stopBtn").disabled = false;
+            document.getElementById("threadSelector").disabled = true;
+            document.getElementById("pauseResumeBtn").innerText = "Pause Test";
+            UpdateStatus("stressStatus", numProcesses + " Processes Active (High Stress).", "#28a745");
+        } else {
+            UpdateStatus("stressStatus", "Error starting stress test: " + res, "#dc3545");
         }
-        totalIterations += chunkIterations;
-        
-        // 3. Update UI
-        document.getElementById("progressBar").style.width = progressPercent.toFixed(0) + '%';
-        document.getElementById("progressText").innerText = progressPercent.toFixed(0) + '%';
-        
-        // 4. Schedule the next chunk (allows UI to update in between)
-        benchmarkTimer = setTimeout(runChunk, 10); // Schedule next chunk after 10ms pause
+    }).catch(function (err) { UpdateStatus("stressStatus", "Error starting stress test: " + err, "#dc3545"); });
+}
+
+function TogglePauseResume() {
+    var numProcesses = parseInt(document.getElementById("threadSelector").value);
+    hostInvoke('togglePauseResume', {}).then(function (result) {
+        if (result === 'paused') { document.getElementById("pauseResumeBtn").innerText = "Resume Test"; UpdateStatus("stressStatus", numProcesses + " Processes PAUSED (Low utilization).", "#ffc107"); }
+        else if (result === 'resumed') { document.getElementById("pauseResumeBtn").innerText = "Pause Test"; UpdateStatus("stressStatus", numProcesses + " Processes RESUMED to High Stress.", "#28a745"); }
+        else { UpdateStatus("stressStatus", "Pause/Resume returned: " + result, "#dc3545"); }
+    }).catch(function (err) { UpdateStatus("stressStatus", "Error toggling pause/resume: " + err, "#dc3545"); });
+}
+
+function StopStress() {
+    UpdateStatus("stressStatus", "Stopping all processes...", "#0056b3");
+    hostInvoke('stopStress', {}).then(function (res) {
+        if (res === true) {
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("pauseResumeBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = true;
+            document.getElementById("threadSelector").disabled = false;
+            UpdateThreadAndRunCountStatus();
+            UpdateStatus("stressStatus", "Test Stopped. Ready to begin.", "#0056b3");
+        } else {
+            UpdateStatus("stressStatus", "Error stopping stress test: " + res, "#dc3545");
+        }
+    }).catch(function (err) { UpdateStatus("stressStatus", "Error stopping stress test: " + err, "#dc3545"); });
+}
+
+// --- BENCHMARK FUNCTIONS (unchanged except WMI/FS usage where needed) ---
+var BENCHMARK_CHUNK_DURATION = 6.0;
+// Adjusted scaling to better match the original HTA (IE/JScript) performance range.
+// WebView2 (Chromium) is much faster, so increase the divisor to scale scores
+// down to the historical average. Tweak this value if you want a different mapping.
+var SCORE_SCALING_FACTOR = 480312.5;
+var f_val = 1.000001;
+var i_val = 123456789;
+var is_benchmark_running = false;
+var total_iterations = 0;
+var benchmark_start_time = 0;
+var run_scores = [];
+var current_run = 0;
+
+function ResetRunState() { f_val = 1.000001; i_val = 123456789; total_iterations = 0; var date = new Date(); benchmark_start_time = date.getTime() / 1000; }
+
+function StartBenchmark() {
+    if (document.getElementById("startBtn").disabled == true) { UpdateStatus("benchStatus", "Please stop the CPU Stress Test before running the benchmark.", "#dc3545"); return; }
+    if (is_benchmark_running) return;
+    var totalRuns = GetTotalRuns();
+    run_scores = []; current_run = 1; is_benchmark_running = true;
+    document.getElementById("benchBtn").disabled = true; document.getElementById("runCountInput").disabled = true; document.getElementById("benchResult").innerHTML = "0.00";
+    document.getElementById("benchDetails").innerText = "Starting Run 1 of " + totalRuns + " (Duration: " + BENCHMARK_CHUNK_DURATION + "s)";
+    UpdateStatus("benchStatus", "Executing single core benchmark...", "#0056b3");
+    document.getElementById("progressBarFill").style.width = '0%'; document.getElementById("progressText").innerText = '0%';
+    ResetRunState(); setTimeout(RunBenchmarkChunk, 10);
+}
+
+function RunBenchmarkChunk() {
+    if (!is_benchmark_running) return;
+    var totalRuns = GetTotalRuns(); var date = new Date(); var current_time = date.getTime() / 1000; var elapsed_time = current_time - benchmark_start_time;
+    var progress_percent = Math.min(100.0, (elapsed_time / BENCHMARK_CHUNK_DURATION) * 100.0);
+    if (elapsed_time >= BENCHMARK_CHUNK_DURATION) { document.getElementById("progressBarFill").style.width = '100%'; document.getElementById("progressText").innerText = '100%'; FinishBenchmark(); return; }
+    var chunk_end_time = current_time + 0.005;
+    while ((new Date().getTime() / 1000) < chunk_end_time) {
+        total_iterations++;
+        f_val = Math.sqrt(f_val * 0.999999 + 0.000001);
+        f_val = Math.sin(f_val * Math.PI);
+        f_val = Math.cos(f_val / 2);
+        i_val = (i_val * 77) % 2000000000;
+        i_val = (i_val * 13 + 5) % 2000000000;
+        i_val = (i_val ^ 0xDEADBEEF) % 2000000000;
+    }
+    var current_score = (total_iterations / SCORE_SCALING_FACTOR).toFixed(2);
+    document.getElementById("benchResult").innerHTML = current_score;
+    document.getElementById("benchDetails").innerText = "Run " + current_run + " of " + totalRuns + ": Score " + current_score;
+    var display_percent = progress_percent.toFixed(0);
+    document.getElementById("progressBarFill").style.width = display_percent + '%';
+    document.getElementById("progressText").innerText = display_percent + '%';
+    setTimeout(RunBenchmarkChunk, 1);
+}
+
+function FinishBenchmark() {
+    var totalRuns = GetTotalRuns();
+    var run_score = total_iterations / SCORE_SCALING_FACTOR; run_scores.push(run_score);
+    if (current_run < totalRuns) {
+        current_run++; document.getElementById("progressBarFill").style.width = '0%'; document.getElementById("progressText").innerText = '0%'; UpdateStatus("benchStatus", "Run " + (current_run - 1) + " recorded. Starting Run " + current_run + "...", "#0056b3"); document.getElementById("benchDetails").innerText = "Starting Run " + current_run + " of " + totalRuns + " (Duration: " + BENCHMARK_CHUNK_DURATION + "s)"; ResetRunState(); setTimeout(RunBenchmarkChunk, 50);
+    } else {
+        is_benchmark_running = false; var sum = 0; for (var i = 0; i < run_scores.length; i++) { sum += run_scores[i]; }
+        var average_score = sum / run_scores.length; var display_avg_score = average_score.toFixed(2);
+        var raw_scores_list = ""; for (var j = 0; j < run_scores.length; j++) { raw_scores_list += run_scores[j].toFixed(2); if (j < run_scores.length - 1) { raw_scores_list += ", "; } }
+        document.getElementById("benchResult").innerHTML = display_avg_score; UpdateStatus("benchStatus", "Benchmark Complete! Average Score Displayed.", "#28a745"); document.getElementById("benchDetails").innerText = "Average of " + run_scores.length + " Runs. Raw Scores: [" + raw_scores_list + "]";
+        document.getElementById("benchBtn").disabled = false; document.getElementById("runCountInput").disabled = false; UpdateThreadAndRunCountStatus();
+        // Save your score and refresh the chart
+        SaveYourScore(average_score);
+    }
+}
+
+function Window_OnLoad() {
+    // ask host for running directory if not already set by init
+    hostInvoke('getAppDir', {}).then(function (dir) { htaDir = dir || htaDir; }).finally(function () { StopStress(); document.getElementById("startBtn").innerText = "Start Stress Test"; StartStaticInfoFetch(); UpdateThreadAndRunCountStatus(); ApplySavedTheme(); InitBenchmarksChart(); });
+}
+
+function Window_OnUnload() { StopStress(); }
+
+// --- Customization functions (non-invasive UI layer) ---
+function ApplySavedTheme() {
+    try {
+        var bg = localStorage.getItem('cpuutil_bg');
+        var fg = localStorage.getItem('cpuutil_fg');
+        var mainBg = localStorage.getItem('cpuutil_main_bg');
+        var mainFg = localStorage.getItem('cpuutil_main_fg');
+        if (bg) document.body.style.backgroundColor = bg;
+        if (fg) document.body.style.color = fg;
+        var main = document.querySelector('.main-container');
+        if (mainBg) main.style.backgroundColor = mainBg;
+        if (mainFg) main.style.color = mainFg;
+        // set control values if present
+        var bgInp = document.getElementById('cust_bg'); if (bgInp && bg) bgInp.value = bg;
+        var fgInp = document.getElementById('cust_fg'); if (fgInp && fg) fgInp.value = fg;
+        var mainBgInp = document.getElementById('cust_main_bg'); if (mainBgInp && mainBg) mainBgInp.value = mainBg;
+        var mainFgInp = document.getElementById('cust_main_fg'); if (mainFgInp && mainFg) mainFgInp.value = mainFg;
+    } catch (e) { }
+}
+
+function SaveTheme() {
+    try {
+        var bg = document.getElementById('cust_bg').value;
+        var fg = document.getElementById('cust_fg').value;
+        var mainBg = document.getElementById('cust_main_bg').value;
+        var mainFg = document.getElementById('cust_main_fg').value;
+        if (bg) { document.body.style.backgroundColor = bg; localStorage.setItem('cpuutil_bg', bg); }
+        if (fg) { document.body.style.color = fg; localStorage.setItem('cpuutil_fg', fg); }
+        var main = document.querySelector('.main-container');
+        if (mainBg) { main.style.backgroundColor = mainBg; localStorage.setItem('cpuutil_main_bg', mainBg); }
+        if (mainFg) { main.style.color = mainFg; localStorage.setItem('cpuutil_main_fg', mainFg); }
+        UpdateStatus('benchStatus','Theme saved.', '#28a745');
+    } catch (e) { UpdateStatus('benchStatus','Error saving theme: ' + e.message, '#dc3545'); }
+}
+
+function ResetTheme() {
+    try {
+        localStorage.removeItem('cpuutil_bg');
+        localStorage.removeItem('cpuutil_fg');
+        localStorage.removeItem('cpuutil_main_bg');
+        localStorage.removeItem('cpuutil_main_fg');
+        // restore defaults
+        document.body.style.backgroundColor = '#f0f0f0';
+        document.body.style.color = '#333';
+        var main = document.querySelector('.main-container');
+        if (main) { main.style.backgroundColor = '#fff'; main.style.color = '#000'; }
+        ApplySavedTheme();
+        UpdateStatus('benchStatus','Theme reset to defaults.', '#0056b3');
+    } catch (e) { }
+}
+
+function ToggleSidebar() {
+    var sb = document.getElementById('customSidebar');
+    if (!sb) return;
+    sb.classList.toggle('open');
+    var t = document.getElementById('settingsToggle');
+    if (sb.classList.contains('open')) t.innerText = '✖'; else t.innerText = '⚙';
+    // close benchmarks if open
+    var bs = document.getElementById('benchmarksSidebar');
+    if (bs && bs.classList.contains('open')) {
+        bs.classList.remove('open');
+        var bt = document.getElementById('benchmarksToggle');
+        if (bt) bt.innerText = '📊';
+    }
+}
+
+function ToggleBenchmarks() {
+    var bs = document.getElementById('benchmarksSidebar');
+    if (!bs) return;
+    bs.classList.toggle('open');
+    var t = document.getElementById('benchmarksToggle');
+    if (bs.classList.contains('open')) t.innerText = '✖'; else t.innerText = '📊';
+    // close settings if open
+    var sb = document.getElementById('customSidebar');
+    if (sb && sb.classList.contains('open')) {
+        sb.classList.remove('open');
+        var st = document.getElementById('settingsToggle');
+        if (st) st.innerText = '⚙';
+    }
+}
+
+// --- Benchmarks Chart Data & Initialization ---
+var cpuBenchmarkData = [
+    { cpu: 'i7-4770K', score: 39 },
+    { cpu: 'i5-7200U', score: 32 },
+    { cpu: 'N200', score: 18 },
+    { cpu: 'Core i5-210H', score: 52 },
+    { cpu: 'Ryzen 7 7700X', score: 64 },
+    { cpu: 'Ryzen 5 3600', score: 40 }
+];
+
+var benchmarkChart = null;
+
+function SaveYourScore(score) {
+    localStorage.setItem('cpuutil_your_score', score.toFixed(2));
+    RefreshBenchmarksChart();
+}
+
+function GetYourScore() {
+    var saved = localStorage.getItem('cpuutil_your_score');
+    return saved ? parseFloat(saved) : null;
+}
+
+function RefreshBenchmarksChart() {
+    if (benchmarkChart) {
+        benchmarkChart.destroy();
+        benchmarkChart = null;
+    }
+    CreateBenchmarksChart();
+}
+
+function InitBenchmarksChart() {
+    // Load Chart.js from CDN
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = function() { CreateBenchmarksChart(); CreateHardwareCharts(); StartHardwarePoll(); };
+    document.head.appendChild(script);
+}
+
+function CreateBenchmarksChart() {
+    var ctx = document.getElementById('benchmarksChart');
+    if (!ctx) return;
+    
+    // Build data array with your score if available
+    var chartData = cpuBenchmarkData.slice();
+    var yourScore = GetYourScore();
+    if (yourScore !== null) {
+        chartData.push({ cpu: 'Your CPU', score: yourScore });
     }
     
-    function FinishBenchmark(iterations) {
-        
-        try {
-            // 1. Calculate score (Total Iterations / 100,000)
-            var score = iterations / SCORE_SCALING_FACTOR;
-            
-            // 2. Format score for display
-            var displayScore = score.toFixed(2);
-            if (score > 0 && score < 1) {
-                displayScore = score.toFixed(4); 
+    // Sort from least to most
+    chartData.sort(function(a, b) { return a.score - b.score; });
+    
+    var labels = chartData.map(function(item) { return item.cpu; });
+    var scores = chartData.map(function(item) { return item.score; });
+    
+    // Color your CPU differently
+    var colors = scores.map(function(s, idx) {
+        return labels[idx] === 'Your CPU' ? '#28a745' : '#007bff';
+    });
+    var borderColors = scores.map(function(s, idx) {
+        return labels[idx] === 'Your CPU' ? '#1f7e34' : '#0056b3';
+    });
+    
+    benchmarkChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Average Score',
+                data: scores,
+                backgroundColor: colors,
+                borderColor: borderColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            scales: {
+                x: { beginAtZero: true, max: 70 }
+            },
+            plugins: {
+                legend: { display: true, position: 'top' }
             }
-            
-            // 3. Update result text
-            document.getElementById("benchmarkResult").innerHTML = 
-                "CPU Performance Score (Single Core):<br>" +
-                "<span style='font-size: 2.5em; color: #004d99;'>" + displayScore + "</span>" +
-                "<div style='font-size: 0.9em; font-weight: 500; margin-top: 10px; color: #555;'>" +
-                "Total Operations: " + iterations.toLocaleString() +
-                "<br>Scaling Factor: " + SCORE_SCALING_FACTOR.toLocaleString() +
-                " (Score = Ops / 100,000)" +
-                "</div>";
-                
-            if (iterations == 0) {
-                document.getElementById("benchmarkResult").innerHTML += 
-                    "<div style='font-size: 0.8em; color: #dc3545; margin-top: 5px;'>" +
-                    "**CRITICAL ERROR**: The benchmark failed to register operations. Check sandboxing settings." +
-                    "</div>";
-            }
-
-        } catch (e) {
-            if (typeof console !== 'undefined' && console.error) console.error("Fatal error during benchmark scoring: " + e.description);
-            document.getElementById("benchmarkResult").innerText = "Fatal error calculating score.";
-        } finally {
-            // 4. Reset GUI state
-            clearTimeout(benchmarkTimer);
-            isBenchmarkRunning = false;
-            document.getElementById("benchmarkBtn").disabled = false;
-            UpdateStatus("Ready to run benchmark.", "ready", "benchmarkStatus");
         }
-    }
+    });
+}
 
-    // --- Initialization on load / unload ---
+// --- Hardware monitoring charts ---
+var hwCharts = { temp: null, volt: null, freq: null };
+var hwSeriesMax = 60;
 
-    function Window_OnLoad() {
-        var W = 800; 
-        var H = 480; 
-        var x = (screen.availWidth / 2) - (W / 2);
-        var y = (screen.availHeight / 2) - (H / 2);
-        window.moveTo(x, y);
+function CreateHardwareCharts() {
+    // create empty datasets
+    try {
+        var tctx = document.getElementById('tempChart');
+        var vctx = document.getElementById('voltageChart');
+        var fctx = document.getElementById('freqChart');
+        if (!tctx || !vctx || !fctx) return;
 
+        hwCharts.temp = new Chart(tctx, {
+            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Temp (°C)', data: [], borderColor: '#ff5722', backgroundColor: 'rgba(255,87,34,0.08)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } } }
+        });
+
+        hwCharts.volt = new Chart(vctx, {
+            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Voltage (V)', data: [], borderColor: '#673ab7', backgroundColor: 'rgba(103,58,183,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } } }
+        });
+
+        hwCharts.freq = new Chart(fctx, {
+            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Frequency (MHz)', data: [], borderColor: '#03a9f4', backgroundColor: 'rgba(3,169,244,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } } }
+        });
+    } catch (e) { }
+}
+
+function StartHardwarePoll() {
+    // poll every second
+    setInterval(async function () {
         try {
-            htaDir = fso.GetParentFolderName(document.location.pathname); 
-        } catch(e) {
-            htaDir = WshShell.CurrentDirectory; 
-        }
+            var m = await hostInvoke('getHardwareMetrics', {});
+            var ts = new Date();
+            var label = ts.getHours().toString().padStart(2,'0')+ ':' + ts.getMinutes().toString().padStart(2,'0')+ ':' + ts.getSeconds().toString().padStart(2,'0');
+            if (m && hwCharts.temp && hwCharts.volt && hwCharts.freq) {
+                pushPoint(hwCharts.temp, label, (m.TempC !== null && m.TempC !== undefined) ? Number(m.TempC.toFixed(1)) : null);
+                pushPoint(hwCharts.volt, label, (m.Voltage !== null && m.Voltage !== undefined) ? Number(m.Voltage) : null);
+                pushPoint(hwCharts.freq, label, (m.CpuFreqMHz !== null && m.CpuFreqMHz !== undefined) ? Number(m.CpuFreqMHz) : null);
+            }
+        } catch (e) { }
+    }, 1000);
+}
 
-        StopStress(); 
-        
-        document.getElementById("progressBar").style.width = '0%';
-        document.getElementById("progressText").innerText = '0%';
-    }
+function pushPoint(chart, label, value) {
+    try {
+        if (!chart) return;
+        var ds = chart.data.datasets[0];
+        chart.data.labels.push(label);
+        ds.data.push(value === null ? NaN : value);
+        if (chart.data.labels.length > hwSeriesMax) { chart.data.labels.shift(); ds.data.shift(); }
+        chart.update('none');
+    } catch (e) { }
+}
 
-    function Window_OnUnload() {
-        StopWorkers(STRESS_PS_TITLE);
-        clearTimeout(benchmarkTimer);
-    }
 </script>
 </head>
 
 <body onload="Window_OnLoad()" onunload="Window_OnUnload()">
-    <div class="main-wrapper">
-        <!-- ============================================== -->
-        <!-- LEFT PANEL: CONTINUOUS STRESS CONTROLLER -->
-        <!-- ============================================== -->
-        <div class="panel stress-section">
-            <h1>Continuous Stress Controller</h1>
-            <p>Launches **external** workers for max load and paused states.</p>
+    <div class="main-container">
+
+        <!-- Stress Controller Panel -->
+        <div class="panel stress-panel">
+            <h1>Multi-Core Stress Controller</h1>
+            <p>Launches independent, processes for maximum, sustained CPU load.</p>
             
-            <div class="control-group">
-                <label for="threadCountSelect">Threads to Stress:</label>
-                <select id="threadCountSelect">
+            <div class="stress-control-row" style="margin-bottom: 20px;">
+                <label for="threadSelector" style="font-weight: 600;">Select Stress Threads:</label>
+                <select id="threadSelector" onchange="UpdateThreadAndRunCountStatus()">
+                    <option value="1">1 Thread</option>
                     <option value="2">2 Threads</option>
                     <option value="4">4 Threads</option>
+                    <option value="6">6 Threads</option>
                     <option value="8" selected>8 Threads (Default)</option>
+                    <option value="12">12 Threads</option>
                     <option value="16">16 Threads</option>
+                    <option value="20">20 Threads</option>
+                    <option value="24">24 Threads</option>
                 </select>
             </div>
             
-            <p class="status-text" id="processCount">Ready to launch exactly 8 simultaneous stress processes.</p>
+            <div class="status-text" id="stressStatus">Ready.</div>
             
-            <div class="status-text" id="statusText">Test Stopped. Ready to begin.</div>
+            <p class="status-text" id="processCount" style="margin-top: -15px; font-size: 0.9em; font-weight: normal; color: #666;"></p>
             
-            <div class="button-group" style="margin-top: 50px;">
-                <button id="startBtn" onclick="StartStress()">Start</button>
-                <button id="pauseResumeBtn" onclick="TogglePauseResume()" disabled>Pause</button>
+
+            <div class="button-group">
+                <button id="startBtn" onclick="StartStress()">Start Stress Test</button>
+                <button id="pauseResumeBtn" onclick="TogglePauseResume()" disabled>Pause Test</button>
                 <button id="stopBtn" onclick="StopStress()" disabled>Stop All</button>
             </div>
             
-            <p class="note">
-                *The stress test uses external processes and may not function in heavily sandboxed environments.
+            <p style="font-size:0.8em; margin-top:20px; color:#a0a0a0;">
+                *Processes run hidden in the background for sustained load.
             </p>
         </div>
 
-        <!-- ============================================== -->
-        <!-- RIGHT PANEL: SINGLE-CORE BENCHMARK -->
-        <!-- ============================================== -->
-        <div class="panel benchmark-section right-panel">
-            <!-- UPDATED TITLE -->
-            <h1>Single Core Benchmark</h1>
-            <p>Runs a 5-second **internal** JScript loop. Score is normalized (Raw Ops / 100,000).</p>
+        <!-- Stable Single Core Benchmark & Static Info Panel (Combined) -->
+        <div class="panel benchmark-panel">
+            <h1>Stable Single Core Benchmark</h1>
+            <p>Averaging multiple runs mitigates operating system interference and yields a stable result.</p>
             
-            <div class="control-group" style="margin-top: 20px;">
-                <!-- UPDATED BUTTON TEXT -->
-                <button id="benchmarkBtn" onclick="StartBenchmark()" style="width: 200px;">
-                    Run Benchmark
-                </button>
+            <!-- User Input for Run Count -->
+            <div class="run-count-control">
+                <label for="runCountInput" style="font-weight: 600;">Number of Runs:</label>
+                <input type="number" id="runCountInput" value="3" min="1" oninput="UpdateThreadAndRunCountStatus()">
             </div>
-
-            <!-- Progress Bar HTML -->
-            <div class="progress-container">
-                <!-- Progress text is positioned absolutely and centered vertically via line-height -->
-                <div id="progressText" class="progress-text">0%</div>
-                <div id="progressBar" class="progress-bar"></div>
-            </div>
-
-            <div class="status-text" id="benchmarkStatus">Ready to run benchmark.</div>
             
-            <div class="benchmark-result" id="benchmarkResult">
-                Press 'Run Benchmark' to start.
+            <button id="benchBtn" onclick="StartBenchmark()" style="margin-bottom: 10px;">Run Stable Benchmark</button>
+            
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar" id="progressBarFill"></div>
+                <div id="progressText">0%</div>
             </div>
 
-            <p class="note" style="margin-top: 10px;">
-                *The score reflects single-core performance within the HTA environment.
-            </p>
-            <p class="note">
-                **Note:** The benchmark now runs asynchronously, allowing the progress bar to update.
-            </p>
+            <div class="status-text" id="benchStatus" style="margin-top: 20px;"></div>
+            
+            <span class="score-display" id="benchResult">0.00</span>
+            
+            <p id="benchDetails">Set the number of runs above and press 'Run Stable Benchmark' to start.</p>
+            
+            <!-- Static CPU Info Section -->
+            <div class="static-info-container">
+                <h2>CPU Hardware Details</h2>
+                <div style="font-weight: 600; font-size: 1.1em; color: #0056b3; margin-bottom: 10px;" id="cpuModel">Fetching CPU Model...</div>
+                <div class="static-specs">
+                    <div>
+                        Max Clock<br>
+                        <strong><span id="cpuClockMax">-- GHz</span></strong>
+                    </div>
+                    <div>
+                        Cores<br>
+                        <strong><span id="cpuCores">--</span></strong>
+                    </div>
+                    <div>
+                        Threads<br>
+                        <strong><span id="cpuThreads">--</span></strong>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Sidebar Toggle Buttons (Settings + Benchmarks) -->
+    <div class="sidebar-toggle-row">
+        <button id="settingsToggle" onclick="ToggleSidebar()">⚙</button>
+        <button id="benchmarksToggle" onclick="ToggleBenchmarks()">📊</button>
+    </div>
+
+    <!-- Customization Sidebar -->
+    <div id="customSidebar" class="custom-sidebar" aria-hidden="true">
+        <h3>Customize Appearance</h3>
+        <p style="margin-top:4px; font-size:0.9em; color:#444">Change background and text colors. Settings persist locally.</p>
+
+        <label for="cust_bg">Page Background</label>
+        <input type="color" id="cust_bg" value="#f0f0f0">
+
+        <label for="cust_fg">Page Text Color</label>
+        <input type="color" id="cust_fg" value="#333333">
+
+        <label for="cust_main_bg">Main Panel Background</label>
+        <input type="color" id="cust_main_bg" value="#ffffff">
+
+        <label for="cust_main_fg">Main Panel Text Color</label>
+        <input type="color" id="cust_main_fg" value="#000000">
+
+        <div style="margin-top:12px; display:flex; align-items:center;">
+            <button class="save-btn" onclick="SaveTheme()">Save</button>
+            <button class="reset-btn" onclick="ResetTheme()">Reset</button>
+        </div>
+
+        <div style="margin-top:14px; font-size:0.85em; color:#666">Tip: Use sensible contrasts for readability.</div>
+    </div>
+
+    <!-- Benchmarks Sidebar -->
+    <div id="benchmarksSidebar" class="benchmarks-sidebar" aria-hidden="true">
+        <h3>CPU Benchmark Comparison</h3>
+        <p style="margin-top:4px; font-size:0.9em; color:#444">Your system's score vs. other CPUs (average runs).</p>
+        <canvas id="benchmarksChart" width="300" height="400"></canvas>
+        <p style="margin-top:12px; font-size:0.85em; color:#666">Chart shows single-core benchmark scores from various systems.</p>
+        <hr style="margin-top:14px; border:none; border-top:1px solid #eee;">
+        <h3 style="margin-top:12px;">Hardware Monitoring (Live)</h3>
+        <p style="margin-top:4px; font-size:0.9em; color:#444">Temperature, voltage, and core frequency (updates every second when available).</p>
+        <div style="font-size:0.85em; color:#666; margin-bottom:6px;">Data shown if host provides metrics via WMI.</div>
+        <canvas id="tempChart" width="300" height="120"></canvas>
+        <canvas id="voltageChart" width="300" height="120"></canvas>
+        <canvas id="freqChart" width="300" height="120"></canvas>
+    </div>
+
 </body>
 </html>
