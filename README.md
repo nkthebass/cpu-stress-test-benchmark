@@ -1,6 +1,6 @@
 # cpu-stress-test-benchmark`
 
-This is my first public progect, I am attempting to make a simple, easy to use, and accurate CPU benchmarking, stress testing and hardware info program. 
+This is my first public project, I am attempting to make a simple, easy to use, and accurate CPU benchmarking, stress testing and hardware info program. 
 The current release has a stress testing feture that supports 1,2,4,6,8,12,18,20,24 threaded CPUS *note on high end cpus like a r7 7700x may not be 100% utilized* the stress test is aiming to make a stressful enviorment for your cpu to test temps/ stability.
 The benchmarking feture currently uses Floating-Point Operations and Integer Operations ↓↓↓
 
