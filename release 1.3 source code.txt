@@ -1,4 +1,4 @@
-<!doctype html>
+    <!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -516,11 +516,11 @@ function CreateHardwareCharts() {
         });
 
         hwCharts.volt = new Chart(vctx, {
-            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Voltage (V)', data: [], borderColor: '#673ab7', backgroundColor: 'rgba(103,58,183,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } } }
+            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Voltage (V)', data: [], borderColor: '#673ab7', backgroundColor: 'rgba(103,58,183,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true, min: 0, max: 2 } }, plugins: { tooltip: { callbacks: { label: function(ctx) { return 'Voltage: ' + (ctx.parsed.y !== null && ctx.parsed.y !== undefined ? ctx.parsed.y.toFixed(2) : '0.00') + ' V'; } } } } }
         });
 
         hwCharts.freq = new Chart(fctx, {
-            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Frequency (MHz)', data: [], borderColor: '#03a9f4', backgroundColor: 'rgba(3,169,244,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } } }
+            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Frequency (GHz)', data: [], borderColor: '#03a9f4', backgroundColor: 'rgba(3,169,244,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } }, plugins: { tooltip: { callbacks: { label: function(ctx) { var ghz = (ctx.parsed.y / 1000).toFixed(3); return 'Frequency: ' + ghz + ' GHz'; } } } } }
         });
     } catch (e) { }
 }
@@ -534,7 +534,7 @@ function StartHardwarePoll() {
             var label = ts.getHours().toString().padStart(2,'0')+ ':' + ts.getMinutes().toString().padStart(2,'0')+ ':' + ts.getSeconds().toString().padStart(2,'0');
             if (m && hwCharts.temp && hwCharts.volt && hwCharts.freq) {
                 pushPoint(hwCharts.temp, label, (m.TempC !== null && m.TempC !== undefined) ? Number(m.TempC.toFixed(1)) : null);
-                pushPoint(hwCharts.volt, label, (m.Voltage !== null && m.Voltage !== undefined) ? Number(m.Voltage) : null);
+                pushPoint(hwCharts.volt, label, (m.Voltage !== null && m.Voltage !== undefined) ? Number(Number(m.Voltage).toFixed(2)) : null);
                 pushPoint(hwCharts.freq, label, (m.CpuFreqMHz !== null && m.CpuFreqMHz !== undefined) ? Number(m.CpuFreqMHz) : null);
             }
         } catch (e) { }
@@ -550,6 +550,17 @@ function pushPoint(chart, label, value) {
         if (chart.data.labels.length > hwSeriesMax) { chart.data.labels.shift(); ds.data.shift(); }
         chart.update('none');
     } catch (e) { }
+}
+
+function DumpSensors() {
+    hostInvoke('getHardwareSensors', {}).then(function(sensors) {
+        console.log('=== All Available Sensors ===');
+        console.table(sensors);
+        alert('Sensor data dumped to console (press F12 to view). Check the console for all sensor names and values.');
+    }).catch(function(err) {
+        console.error('Failed to get sensors:', err);
+        alert('Failed to get sensors. Check console for errors.');
+    });
 }
 
 </script>
@@ -680,7 +691,12 @@ function pushPoint(chart, label, value) {
         <hr style="margin-top:14px; border:none; border-top:1px solid #eee;">
         <h3 style="margin-top:12px;">Hardware Monitoring (Live)</h3>
         <p style="margin-top:4px; font-size:0.9em; color:#444">Temperature, voltage, and core frequency (updates every second when available).</p>
-        <div style="font-size:0.85em; color:#666; margin-bottom:6px;">Data shown if host provides metrics via WMI.</div>
+        <div style="font-size:0.85em; color:#666; margin-bottom:6px;">Data from Windows Performance Counters, WMI, and LibreHardwareMonitor.</div>
+        <div style="font-size:0.78em; color:#888; margin-bottom:8px;">
+            <strong>Tip:</strong> For best results, download and run <a href="https://openhardwaremonitor.org/downloads/" target="_blank" style="color:#0066cc;">Open Hardware Monitor</a> 
+            or <a href="https://www.hwinfo.com/download/" target="_blank" style="color:#0066cc;">HWiNFO64</a> with "Enable WMI Support" option.
+        </div>
+        <button onclick="DumpSensors()" style="margin-bottom:10px; padding:6px 12px; background:#17a2b8; color:#fff; border:none; border-radius:3px; cursor:pointer; font-size:0.85em;">Debug: Dump All Sensors to Console</button>
         <canvas id="tempChart" width="300" height="120"></canvas>
         <canvas id="voltageChart" width="300" height="120"></canvas>
         <canvas id="freqChart" width="300" height="120"></canvas>
