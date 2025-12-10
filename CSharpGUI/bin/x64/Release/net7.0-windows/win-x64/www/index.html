@@ -1,0 +1,759 @@
+    <!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Xeno CPU utility 1.3.0</title>
+<style>
+    /* General Styles */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f0f0; 
+        color: #333;
+        padding: 15px;
+        margin: 0;
+        min-height: 100vh;
+        overflow-y: auto; 
+        position: relative; 
+    }
+    
+    .main-container {
+        width: 600px; 
+        position: absolute;
+        left: 50%; 
+        margin-left: -300px; 
+        background-color: #fff;
+        border-radius: 5px; 
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        box-sizing: border-box;
+        text-align: left;
+    }
+    
+    .panel { padding: 20px 0; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #e0e0e0; }
+    .panel:last-child { border-bottom: none; margin-bottom: 0; }
+
+    h1 { font-size: 1.4em; color: #0056b3; margin-bottom: 5px; padding-bottom: 8px; font-weight: 700; text-transform: uppercase; }
+    .status-text { margin: 15px 0 25px; font-size: 1.1em; font-weight: bold; min-height: 20px; color: #0056b3; }
+    .button-group { display: flex; justify-content: center; gap: 10px; }
+    .button-group button { background-color: #007bff; color: white; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s, transform 0.1s; font-size: 0.9em; font-weight: 600; min-width: 100px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);} 
+    .button-group button:hover { background-color: #0056b3; }
+    .button-group button:active { transform: scale(0.98); }
+    #stopBtn { background-color: #dc3545; }
+    #stopBtn:hover { background-color: #c82333; }
+    button:disabled { background-color: #a0a0a0 !important; cursor: not-allowed; box-shadow: none; }
+
+    .run-count-control { margin-bottom: 20px; display: flex; align-items: center; justify-content: center; }
+    #runCountInput { padding: 5px 10px; border-radius: 3px; border: 1px solid #ccc; margin-left: 10px; font-size: 1em; width: 50px; text-align: center; }
+    .score-display { font-size: 3em; font-weight: 800; color: #0056b3; margin: 15px 0; display: block; }
+
+    .static-info-container { margin-top: 25px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; text-align: left; }
+    .static-info-container h2 { font-size: 1.1em; color: #0056b3; margin-bottom: 10px; border-bottom: 1px dashed #cceeff; padding-bottom: 5px; }
+    .static-specs { display: flex; justify-content: space-around; margin-top: 10px; font-size: 0.9em; }
+    .static-specs div { background-color: #e6ffe6; padding: 6px 10px; border-radius: 3px; flex: 1; margin: 0 5px; text-align: center; }
+    .static-specs strong { display: block; font-size: 1em; color: #28a745; }
+
+    .progress-bar-wrapper { width: 80%; margin: 20px auto 0; background-color: #e9ecef; border-radius: 10px; overflow: hidden; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); position: relative; }
+    .progress-bar { height: 20px; background-color: #17a2b8; width: 0%; transition: width 0.05s linear; }
+    #progressText { position: absolute; width: 100%; text-align: center; line-height: 20px; color: #000; font-weight: 700; top: 0; font-size: 0.9em; z-index: 10; }
+    /* Sidebar Toggle Buttons */
+    .sidebar-toggle-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        position: fixed;
+        right: 0;
+        top: 40%;
+        z-index: 9999;
+    }
+
+    .sidebar-toggle-row button {
+        background: #007bff;
+        color: #fff;
+        padding: 8px 10px;
+        border: none;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: background 0.2s;
+    }
+
+    .sidebar-toggle-row button:first-child { border-top-left-radius: 6px; }
+    .sidebar-toggle-row button:last-child { border-bottom-left-radius: 6px; }
+    .sidebar-toggle-row button.active { background: #0056b3; }
+    .sidebar-toggle-row button:hover { background: #0056b3; }
+
+    .custom-sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 320px;
+        max-width: 90%;
+        background: #ffffff;
+        box-shadow: -6px 0 18px rgba(0,0,0,0.15);
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        z-index: 9998;
+        padding: 18px;
+        box-sizing: border-box;
+        overflow-y: auto;
+    }
+
+    .custom-sidebar.open { transform: translateX(0%); }
+
+    .custom-sidebar h3 { margin-top: 0; color: #0056b3; }
+    .custom-sidebar label { display: block; margin-top: 10px; font-weight: 600; font-size: 0.95em; }
+    .custom-sidebar input[type="color"] { margin-top: 6px; width: 60px; height: 34px; border: none; padding: 0; background: none; cursor: pointer; }
+    .custom-sidebar .preset-row { display:flex; gap:8px; margin-top:10px; }
+    .custom-sidebar button { margin-top: 12px; padding: 8px 10px; border-radius:4px; border:none; cursor:pointer; }
+    .custom-sidebar .save-btn { background:#28a745; color:#fff; }
+    .custom-sidebar .reset-btn { background:#dc3545; color:#fff; margin-left:8px; }
+
+    /* Benchmarks Sidebar */
+    .benchmarks-sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 320px;
+        max-width: 90%;
+        background: #ffffff;
+        box-shadow: -6px 0 18px rgba(0,0,0,0.15);
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        z-index: 9998;
+        padding: 18px;
+        box-sizing: border-box;
+        overflow-y: auto;
+    }
+
+    .benchmarks-sidebar.open { transform: translateX(0%); }
+    .benchmarks-sidebar h3 { margin-top: 0; color: #0056b3; }
+    .benchmarks-sidebar canvas { max-width: 100%; margin-top: 12px; display: block; }
+
+</style>
+
+<script>
+// Global error handler for debugging
+window.onerror = function(msg, url, line, col, error) {
+    console.error('Global error:', msg, 'at', line + ':' + col);
+    return false;
+};
+
+console.log('Script started, checking WebView2 bridge...');
+if (typeof window.chrome !== 'undefined' && window.chrome.webview) {
+    console.log('WebView2 bridge available');
+} else {
+    console.error('WebView2 bridge NOT available');
+}
+
+// Bridge helpers replacing ActiveX/HTA APIs with host calls (WebView2)
+var CORE_LOCK_FILE = "core_lock.tmp";
+var TEMP_PS_FILE = "stress_loop.ps1";
+var htaDir = "";
+
+// Message-based bridge using unique ids
+function hostInvoke(cmd, args) {
+    console.log('hostInvoke called:', cmd, JSON.stringify(args));
+    return new Promise(function (resolve, reject) {
+        if (!window.chrome || !window.chrome.webview) {
+            console.error('WebView2 not available!');
+            reject('WebView2 not available');
+            return;
+        }
+        var id = Math.random().toString(36).slice(2);
+        console.log('Generated request id:', id);
+        function listener(e) {
+            try {
+                var m = e.data;
+                console.log('Received message:', JSON.stringify(m));
+                if (!m) return;
+                if (m.replyTo === cmd && m.id === id) {
+                    console.log('Message matched! Resolving with:', m.result);
+                    window.chrome.webview.removeEventListener('message', listener);
+                    resolve(m.result);
+                }
+            } catch (err) { 
+                console.error('Listener error:', err);
+            }
+        }
+        window.chrome.webview.addEventListener('message', listener);
+        console.log('Sending message:', JSON.stringify({ cmd: cmd, args: args || {}, id: id }));
+        window.chrome.webview.postMessage({ cmd: cmd, args: args || {}, id: id });
+    });
+}
+
+// Also accept host's init message
+window.chrome && window.chrome.webview && window.chrome.webview.addEventListener('message', function (e) {
+    try {
+        var m = e.data;
+        if (m && m.cmd === 'init' && m.appDir) {
+            htaDir = m.appDir;
+        }
+    } catch (err) { }
+});
+
+function UpdateStatus(id, msg, color) {
+    document.getElementById(id).innerText = msg;
+    document.getElementById(id).style.color = color;
+}
+
+function GetTotalRuns() { var inputVal = parseInt(document.getElementById("runCountInput").value, 10); return Math.max(1, isNaN(inputVal) ? 1 : inputVal); }
+
+function UpdateThreadAndRunCountStatus() {
+    var selector = document.getElementById("threadSelector");
+    var numThreads = selector ? selector.value : 8;
+    document.getElementById("processCount").innerText = "Current Stress Thread Target: " + numThreads + " processes.";
+    var totalRuns = GetTotalRuns();
+    if (!is_benchmark_running) { UpdateStatus("benchStatus", "Ready for " + totalRuns + " runs (each " + BENCHMARK_CHUNK_DURATION + " seconds).", "#0056b3"); }
+}
+
+// --- WMI replacement: ask host for CPU info ---
+function StartStaticInfoFetch() {
+    hostInvoke('getCpuInfo', {}).then(function (proc) {
+        console.log('CPU Info received:', proc);
+        if (!proc || !proc.success) {
+            document.getElementById("cpuModel").innerText = "WMI Error: Cannot Fetch Static CPU Info";
+            document.getElementById("cpuModel").style.color = "#dc3545";
+            return;
+        }
+        document.getElementById("cpuModel").innerText = proc.name || proc.model || 'Unknown CPU';
+        document.getElementById("cpuCores").innerText = proc.cores || 0;
+        document.getElementById("cpuThreads").innerText = proc.threads || proc.logicalProcessors || 0;
+        var maxClockGhz = proc.maxClockGHz || (proc.maxClockMHz / 1000) || 0;
+        document.getElementById("cpuClockMax").innerText = maxClockGhz.toFixed(1) + " GHz";
+    }).catch(function () {
+        document.getElementById("cpuModel").innerText = "WMI Service Failed to initialize.";
+        document.getElementById("cpuModel").style.color = "#dc3545";
+    });
+}
+
+// --- File & process helpers using host ---
+function fileExists(path) { return hostInvoke('fileExists', { path: path }); }
+function deleteFile(path) { return hostInvoke('deleteFile', { path: path }); }
+function writeFile(path, content) { return hostInvoke('writeFile', { path: path, content: content }); }
+function runProcess(cmd, hidden, wait) { return hostInvoke('runProcess', { cmd: cmd, hidden: !!hidden, wait: !!wait }); }
+
+// --- STRESS FUNCTIONS (adapted) ---
+function StartStress() {
+    console.log("StartStress called");
+    if (is_benchmark_running) { UpdateStatus("stressStatus", "Please stop the Single Core Benchmark before starting the Stress Test.", "#dc3545"); return; }
+    var numProcesses = parseInt(document.getElementById("threadSelector").value);
+
+    UpdateStatus("stressStatus", "Starting " + numProcesses + " high-intensity processes...", "#0056b3");
+
+    hostInvoke('startStress', { numProcesses: numProcesses }).then(function (res) {
+        console.log("startStress response:", res);
+        if (res && res.success) {
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("pauseResumeBtn").disabled = false;
+            document.getElementById("stopBtn").disabled = false;
+            document.getElementById("threadSelector").disabled = true;
+            document.getElementById("pauseResumeBtn").innerText = "Pause Test";
+            UpdateStatus("stressStatus", numProcesses + " Processes Active (High Stress).", "#28a745");
+        } else {
+            UpdateStatus("stressStatus", "Error starting stress test: " + res, "#dc3545");
+        }
+    }).catch(function (err) { UpdateStatus("stressStatus", "Error starting stress test: " + err, "#dc3545"); });
+}
+
+function TogglePauseResume() {
+    var numProcesses = parseInt(document.getElementById("threadSelector").value);
+    hostInvoke('togglePauseResume', {}).then(function (result) {
+        console.log('togglePauseResume response:', result);
+        if (result && result.success && result.isPaused) { 
+            document.getElementById("pauseResumeBtn").innerText = "Resume Test"; 
+            UpdateStatus("stressStatus", numProcesses + " Processes PAUSED (Low utilization).", "#ffc107"); 
+        }
+        else if (result && result.success && !result.isPaused) { 
+            document.getElementById("pauseResumeBtn").innerText = "Pause Test"; 
+            UpdateStatus("stressStatus", numProcesses + " Processes RESUMED to High Stress.", "#28a745"); 
+        }
+        else { UpdateStatus("stressStatus", "Pause/Resume error: " + (result.message || JSON.stringify(result)), "#dc3545"); }
+    }).catch(function (err) { UpdateStatus("stressStatus", "Error toggling pause/resume: " + err, "#dc3545"); });
+}
+
+function StopStress() {
+    UpdateStatus("stressStatus", "Stopping all processes...", "#0056b3");
+    hostInvoke('stopStress', {}).then(function (res) {
+        console.log('stopStress response:', res);
+        if (res && res.success) {
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("pauseResumeBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = true;
+            document.getElementById("threadSelector").disabled = false;
+            UpdateThreadAndRunCountStatus();
+            UpdateStatus("stressStatus", "Test Stopped. Ready to begin.", "#0056b3");
+        } else {
+            UpdateStatus("stressStatus", "Error stopping stress test: " + (res.message || JSON.stringify(res)), "#dc3545");
+        }
+    }).catch(function (err) { UpdateStatus("stressStatus", "Error stopping stress test: " + err, "#dc3545"); });
+}
+
+// --- BENCHMARK FUNCTIONS (unchanged except WMI/FS usage where needed) ---
+var BENCHMARK_CHUNK_DURATION = 6.0;
+// Adjusted scaling to better match the original HTA (IE/JScript) performance range.
+// WebView2 (Chromium) is much faster, so increase the divisor to scale scores
+// down to the historical average. Tweak this value if you want a different mapping.
+var SCORE_SCALING_FACTOR = 480312.5;
+var f_val = 1.000001;
+var i_val = 123456789;
+var is_benchmark_running = false;
+var total_iterations = 0;
+var benchmark_start_time = 0;
+var run_scores = [];
+var current_run = 0;
+
+function ResetRunState() { f_val = 1.000001; i_val = 123456789; total_iterations = 0; var date = new Date(); benchmark_start_time = date.getTime() / 1000; }
+
+function StartBenchmark() {
+    if (document.getElementById("startBtn").disabled == true) { UpdateStatus("benchStatus", "Please stop the CPU Stress Test before running the benchmark.", "#dc3545"); return; }
+    if (is_benchmark_running) return;
+    var totalRuns = GetTotalRuns();
+    run_scores = []; current_run = 1; is_benchmark_running = true;
+    document.getElementById("benchBtn").disabled = true; document.getElementById("runCountInput").disabled = true; document.getElementById("benchResult").innerHTML = "0.00";
+    document.getElementById("benchDetails").innerText = "Starting Run 1 of " + totalRuns + " (Duration: " + BENCHMARK_CHUNK_DURATION + "s)";
+    UpdateStatus("benchStatus", "Executing single core benchmark...", "#0056b3");
+    document.getElementById("progressBarFill").style.width = '0%'; document.getElementById("progressText").innerText = '0%';
+    ResetRunState(); setTimeout(RunBenchmarkChunk, 10);
+}
+
+function RunBenchmarkChunk() {
+    if (!is_benchmark_running) return;
+    var totalRuns = GetTotalRuns(); var date = new Date(); var current_time = date.getTime() / 1000; var elapsed_time = current_time - benchmark_start_time;
+    var progress_percent = Math.min(100.0, (elapsed_time / BENCHMARK_CHUNK_DURATION) * 100.0);
+    if (elapsed_time >= BENCHMARK_CHUNK_DURATION) { document.getElementById("progressBarFill").style.width = '100%'; document.getElementById("progressText").innerText = '100%'; FinishBenchmark(); return; }
+    var chunk_end_time = current_time + 0.005;
+    while ((new Date().getTime() / 1000) < chunk_end_time) {
+        total_iterations++;
+        f_val = Math.sqrt(f_val * 0.999999 + 0.000001);
+        f_val = Math.sin(f_val * Math.PI);
+        f_val = Math.cos(f_val / 2);
+        i_val = (i_val * 77) % 2000000000;
+        i_val = (i_val * 13 + 5) % 2000000000;
+        i_val = (i_val ^ 0xDEADBEEF) % 2000000000;
+    }
+    var current_score = (total_iterations / SCORE_SCALING_FACTOR).toFixed(2);
+    document.getElementById("benchResult").innerHTML = current_score;
+    document.getElementById("benchDetails").innerText = "Run " + current_run + " of " + totalRuns + ": Score " + current_score;
+    var display_percent = progress_percent.toFixed(0);
+    document.getElementById("progressBarFill").style.width = display_percent + '%';
+    document.getElementById("progressText").innerText = display_percent + '%';
+    setTimeout(RunBenchmarkChunk, 1);
+}
+
+function FinishBenchmark() {
+    var totalRuns = GetTotalRuns();
+    var run_score = total_iterations / SCORE_SCALING_FACTOR; run_scores.push(run_score);
+    if (current_run < totalRuns) {
+        current_run++; document.getElementById("progressBarFill").style.width = '0%'; document.getElementById("progressText").innerText = '0%'; UpdateStatus("benchStatus", "Run " + (current_run - 1) + " recorded. Starting Run " + current_run + "...", "#0056b3"); document.getElementById("benchDetails").innerText = "Starting Run " + current_run + " of " + totalRuns + " (Duration: " + BENCHMARK_CHUNK_DURATION + "s)"; ResetRunState(); setTimeout(RunBenchmarkChunk, 50);
+    } else {
+        is_benchmark_running = false; var sum = 0; for (var i = 0; i < run_scores.length; i++) { sum += run_scores[i]; }
+        var average_score = sum / run_scores.length; var display_avg_score = average_score.toFixed(2);
+        var raw_scores_list = ""; for (var j = 0; j < run_scores.length; j++) { raw_scores_list += run_scores[j].toFixed(2); if (j < run_scores.length - 1) { raw_scores_list += ", "; } }
+        document.getElementById("benchResult").innerHTML = display_avg_score; UpdateStatus("benchStatus", "Benchmark Complete! Average Score Displayed.", "#28a745"); document.getElementById("benchDetails").innerText = "Average of " + run_scores.length + " Runs. Raw Scores: [" + raw_scores_list + "]";
+        document.getElementById("benchBtn").disabled = false; document.getElementById("runCountInput").disabled = false; UpdateThreadAndRunCountStatus();
+        // Save your score and refresh the chart
+        SaveYourScore(average_score);
+    }
+}
+
+function Window_OnLoad() {
+    // ask host for running directory if not already set by init
+    hostInvoke('getAppDir', {}).then(function (dir) { htaDir = dir || htaDir; }).finally(function () { 
+        document.getElementById("startBtn").innerText = "Start Stress Test"; 
+        document.getElementById("pauseResumeBtn").disabled = true;
+        document.getElementById("stopBtn").disabled = true;
+        StartStaticInfoFetch(); 
+        UpdateThreadAndRunCountStatus(); 
+        ApplySavedTheme(); 
+        InitBenchmarksChart(); 
+        CreateHardwareCharts();
+        StartHardwarePoll();
+    });
+}
+
+function Window_OnUnload() { StopStress(); }
+
+// --- Customization functions (non-invasive UI layer) ---
+function ApplySavedTheme() {
+    try {
+        var bg = localStorage.getItem('cpuutil_bg');
+        var fg = localStorage.getItem('cpuutil_fg');
+        var mainBg = localStorage.getItem('cpuutil_main_bg');
+        var mainFg = localStorage.getItem('cpuutil_main_fg');
+        if (bg) document.body.style.backgroundColor = bg;
+        if (fg) document.body.style.color = fg;
+        var main = document.querySelector('.main-container');
+        if (mainBg) main.style.backgroundColor = mainBg;
+        if (mainFg) main.style.color = mainFg;
+        // set control values if present
+        var bgInp = document.getElementById('cust_bg'); if (bgInp && bg) bgInp.value = bg;
+        var fgInp = document.getElementById('cust_fg'); if (fgInp && fg) fgInp.value = fg;
+        var mainBgInp = document.getElementById('cust_main_bg'); if (mainBgInp && mainBg) mainBgInp.value = mainBg;
+        var mainFgInp = document.getElementById('cust_main_fg'); if (mainFgInp && mainFg) mainFgInp.value = mainFg;
+    } catch (e) { }
+}
+
+function SaveTheme() {
+    try {
+        var bg = document.getElementById('cust_bg').value;
+        var fg = document.getElementById('cust_fg').value;
+        var mainBg = document.getElementById('cust_main_bg').value;
+        var mainFg = document.getElementById('cust_main_fg').value;
+        if (bg) { document.body.style.backgroundColor = bg; localStorage.setItem('cpuutil_bg', bg); }
+        if (fg) { document.body.style.color = fg; localStorage.setItem('cpuutil_fg', fg); }
+        var main = document.querySelector('.main-container');
+        if (mainBg) { main.style.backgroundColor = mainBg; localStorage.setItem('cpuutil_main_bg', mainBg); }
+        if (mainFg) { main.style.color = mainFg; localStorage.setItem('cpuutil_main_fg', mainFg); }
+        UpdateStatus('benchStatus','Theme saved.', '#28a745');
+    } catch (e) { UpdateStatus('benchStatus','Error saving theme: ' + e.message, '#dc3545'); }
+}
+
+function ResetTheme() {
+    try {
+        localStorage.removeItem('cpuutil_bg');
+        localStorage.removeItem('cpuutil_fg');
+        localStorage.removeItem('cpuutil_main_bg');
+        localStorage.removeItem('cpuutil_main_fg');
+        // restore defaults
+        document.body.style.backgroundColor = '#f0f0f0';
+        document.body.style.color = '#333';
+        var main = document.querySelector('.main-container');
+        if (main) { main.style.backgroundColor = '#fff'; main.style.color = '#000'; }
+        ApplySavedTheme();
+        UpdateStatus('benchStatus','Theme reset to defaults.', '#0056b3');
+    } catch (e) { }
+}
+
+function ToggleSidebar() {
+    var sb = document.getElementById('customSidebar');
+    if (!sb) return;
+    sb.classList.toggle('open');
+    var t = document.getElementById('settingsToggle');
+    if (sb.classList.contains('open')) t.innerText = '✖'; else t.innerText = '⚙';
+    // close benchmarks if open
+    var bs = document.getElementById('benchmarksSidebar');
+    if (bs && bs.classList.contains('open')) {
+        bs.classList.remove('open');
+        var bt = document.getElementById('benchmarksToggle');
+        if (bt) bt.innerText = '📊';
+    }
+}
+
+function ToggleBenchmarks() {
+    var bs = document.getElementById('benchmarksSidebar');
+    if (!bs) return;
+    bs.classList.toggle('open');
+    var t = document.getElementById('benchmarksToggle');
+    if (bs.classList.contains('open')) t.innerText = '✖'; else t.innerText = '📊';
+    // close settings if open
+    var sb = document.getElementById('customSidebar');
+    if (sb && sb.classList.contains('open')) {
+        sb.classList.remove('open');
+        var st = document.getElementById('settingsToggle');
+        if (st) st.innerText = '⚙';
+    }
+}
+
+// --- Benchmarks Chart Data & Initialization ---
+var cpuBenchmarkData = [
+    { cpu: 'i7-4770K', score: 39 },
+    { cpu: 'i5-7200U', score: 32 },
+    { cpu: 'N200', score: 18 },
+    { cpu: 'Core i5-210H', score: 52 },
+    { cpu: 'Ryzen 7 7700X', score: 64 },
+    { cpu: 'Ryzen 5 3600', score: 40 }
+];
+
+var benchmarkChart = null;
+
+function SaveYourScore(score) {
+    localStorage.setItem('cpuutil_your_score', score.toFixed(2));
+    RefreshBenchmarksChart();
+}
+
+function GetYourScore() {
+    var saved = localStorage.getItem('cpuutil_your_score');
+    return saved ? parseFloat(saved) : null;
+}
+
+function RefreshBenchmarksChart() {
+    if (benchmarkChart) {
+        benchmarkChart.destroy();
+        benchmarkChart = null;
+    }
+    CreateBenchmarksChart();
+}
+
+function InitBenchmarksChart() {
+    // Load Chart.js from CDN
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = function() { CreateBenchmarksChart(); CreateHardwareCharts(); StartHardwarePoll(); };
+    document.head.appendChild(script);
+}
+
+function CreateBenchmarksChart() {
+    var ctx = document.getElementById('benchmarksChart');
+    if (!ctx) return;
+    
+    // Build data array with your score if available
+    var chartData = cpuBenchmarkData.slice();
+    var yourScore = GetYourScore();
+    if (yourScore !== null) {
+        chartData.push({ cpu: 'Your CPU', score: yourScore });
+    }
+    
+    // Sort from least to most
+    chartData.sort(function(a, b) { return a.score - b.score; });
+    
+    var labels = chartData.map(function(item) { return item.cpu; });
+    var scores = chartData.map(function(item) { return item.score; });
+    
+    // Color your CPU differently
+    var colors = scores.map(function(s, idx) {
+        return labels[idx] === 'Your CPU' ? '#28a745' : '#007bff';
+    });
+    var borderColors = scores.map(function(s, idx) {
+        return labels[idx] === 'Your CPU' ? '#1f7e34' : '#0056b3';
+    });
+    
+    benchmarkChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Average Score',
+                data: scores,
+                backgroundColor: colors,
+                borderColor: borderColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            scales: {
+                x: { beginAtZero: true, max: 70 }
+            },
+            plugins: {
+                legend: { display: true, position: 'top' }
+            }
+        }
+    });
+}
+
+// --- Hardware monitoring charts ---
+var hwCharts = { temp: null, volt: null, freq: null, cpu: null, ram: null };
+var hwSeriesMax = 25;
+
+function CreateHardwareCharts() {
+    // create empty datasets
+    try {
+        var fctx = document.getElementById('freqChart');
+        var cctx = document.getElementById('cpuChart');
+        var rctx = document.getElementById('ramChart');
+        if (!fctx || !cctx || !rctx) return;
+
+        hwCharts.freq = new Chart(fctx, {
+            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Frequency (MHz)', data: [], borderColor: '#03a9f4', backgroundColor: 'rgba(3,169,244,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } }, plugins: { tooltip: { callbacks: { label: function(ctx) { var ghz = (ctx.parsed.y / 1000).toFixed(3); return 'Frequency: ' + ghz + ' GHz'; } } } } }
+        });
+        
+        hwCharts.cpu = new Chart(cctx, {
+            type: 'line', data: { labels: [], datasets: [{ label: 'CPU Utilization (%)', data: [], borderColor: '#4caf50', backgroundColor: 'rgba(76,175,80,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true, max: 100 } }, plugins: { tooltip: { callbacks: { label: function(ctx) { return 'CPU: ' + ctx.parsed.y.toFixed(1) + '%'; } } } } }
+        });
+        
+        hwCharts.ram = new Chart(rctx, {
+            type: 'line', data: { labels: [], datasets: [{ label: 'RAM Usage (%)', data: [], borderColor: '#ff9800', backgroundColor: 'rgba(255,152,0,0.06)', fill: true }] }, options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true, max: 100 } }, plugins: { tooltip: { callbacks: { label: function(ctx) { return 'RAM: ' + ctx.parsed.y.toFixed(1) + '%'; } } } } }
+        });
+    } catch (e) { console.error('Chart creation error:', e); }
+}function StartHardwarePoll() {
+    // poll every second
+    setInterval(async function () {
+        try {
+            var m = await hostInvoke('getHardwareMetrics', {});
+            var ts = new Date();
+            var label = ts.getHours().toString().padStart(2,'0')+ ':' + ts.getMinutes().toString().padStart(2,'0')+ ':' + ts.getSeconds().toString().padStart(2,'0');
+            if (m) {
+                if (hwCharts.freq) {
+                    var freqVal = (m.CpuFreqMHz !== null && m.CpuFreqMHz !== undefined && m.CpuFreqMHz > 0) ? Number(m.CpuFreqMHz) : null;
+                    pushPoint(hwCharts.freq, label, freqVal);
+                }
+                if (hwCharts.cpu) {
+                    var cpuVal = (m.CpuLoad !== null && m.CpuLoad !== undefined) ? Number(m.CpuLoad) : null;
+                    pushPoint(hwCharts.cpu, label, cpuVal);
+                }
+                if (hwCharts.ram) {
+                    var ramVal = (m.RamUsagePercent !== null && m.RamUsagePercent !== undefined) ? Number(m.RamUsagePercent) : null;
+                    pushPoint(hwCharts.ram, label, ramVal);
+                }
+            }
+        } catch (e) { console.error('Hardware poll error:', e); }
+    }, 1000);
+}
+
+function pushPoint(chart, label, value) {
+    try {
+        if (!chart) return;
+        var ds = chart.data.datasets[0];
+        chart.data.labels.push(label);
+        ds.data.push(value === null ? NaN : value);
+        if (chart.data.labels.length > hwSeriesMax) { chart.data.labels.shift(); ds.data.shift(); }
+        chart.update('active');
+    } catch (e) { }
+}
+
+function DumpSensors() {
+    hostInvoke('getHardwareSensors', {}).then(function(sensors) {
+        console.log('=== All Available Sensors ===');
+        console.table(sensors);
+        alert('Sensor data dumped to console (press F12 to view). Check the console for all sensor names and values.');
+    }).catch(function(err) {
+        console.error('Failed to get sensors:', err);
+        alert('Failed to get sensors. Check console for errors.');
+    });
+}
+
+</script>
+</head>
+
+<body onload="Window_OnLoad()" onunload="Window_OnUnload()">
+    <div class="main-container">
+
+        <!-- Stress Controller Panel -->
+        <div class="panel stress-panel">
+            <h1>Multi-Core Stress Controller</h1>
+            <p>Launches independent, processes for maximum, sustained CPU load.</p>
+            
+            <div class="stress-control-row" style="margin-bottom: 20px;">
+                <label for="threadSelector" style="font-weight: 600;">Select Stress Threads:</label>
+                <select id="threadSelector" onchange="UpdateThreadAndRunCountStatus()">
+                    <option value="1">1 Thread</option>
+                    <option value="2">2 Threads</option>
+                    <option value="4">4 Threads</option>
+                    <option value="6">6 Threads</option>
+                    <option value="8" selected>8 Threads (Default)</option>
+                    <option value="12">12 Threads</option>
+                    <option value="16">16 Threads</option>
+                    <option value="20">20 Threads</option>
+                    <option value="24">24 Threads</option>
+                </select>
+            </div>
+            
+            <div class="status-text" id="stressStatus">Ready.</div>
+            
+            <p class="status-text" id="processCount" style="margin-top: -15px; font-size: 0.9em; font-weight: normal; color: #666;"></p>
+            
+
+            <div class="button-group">
+                <button id="startBtn" onclick="StartStress()">Start Stress Test</button>
+                <button id="pauseResumeBtn" onclick="TogglePauseResume()" disabled>Pause Test</button>
+                <button id="stopBtn" onclick="StopStress()" disabled>Stop All</button>
+            </div>
+            
+            <p style="font-size:0.8em; margin-top:20px; color:#a0a0a0;">
+                *Processes run hidden in the background for sustained load.
+            </p>
+        </div>
+
+        <!-- Stable Single Core Benchmark & Static Info Panel (Combined) -->
+        <div class="panel benchmark-panel">
+            <h1>Stable Single Core Benchmark</h1>
+            <p>Averaging multiple runs mitigates operating system interference and yields a stable result.</p>
+            
+            <!-- User Input for Run Count -->
+            <div class="run-count-control">
+                <label for="runCountInput" style="font-weight: 600;">Number of Runs:</label>
+                <input type="number" id="runCountInput" value="3" min="1" oninput="UpdateThreadAndRunCountStatus()">
+            </div>
+            
+            <button id="benchBtn" onclick="StartBenchmark()" style="margin-bottom: 10px;">Run Stable Benchmark</button>
+            
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar" id="progressBarFill"></div>
+                <div id="progressText">0%</div>
+            </div>
+
+            <div class="status-text" id="benchStatus" style="margin-top: 20px;"></div>
+            
+            <span class="score-display" id="benchResult">0.00</span>
+            
+            <p id="benchDetails">Set the number of runs above and press 'Run Stable Benchmark' to start.</p>
+            
+            <!-- Static CPU Info Section -->
+            <div class="static-info-container">
+                <h2>CPU Hardware Details</h2>
+                <div style="font-weight: 600; font-size: 1.1em; color: #0056b3; margin-bottom: 10px;" id="cpuModel">Fetching CPU Model...</div>
+                <div class="static-specs">
+                    <div>
+                        Max Clock<br>
+                        <strong><span id="cpuClockMax">-- GHz</span></strong>
+                    </div>
+                    <div>
+                        Cores<br>
+                        <strong><span id="cpuCores">--</span></strong>
+                    </div>
+                    <div>
+                        Threads<br>
+                        <strong><span id="cpuThreads">--</span></strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Toggle Buttons (Settings + Benchmarks) -->
+    <div class="sidebar-toggle-row">
+        <button id="settingsToggle" onclick="ToggleSidebar()">⚙</button>
+        <button id="benchmarksToggle" onclick="ToggleBenchmarks()">📊</button>
+    </div>
+
+    <!-- Customization Sidebar -->
+    <div id="customSidebar" class="custom-sidebar" aria-hidden="true">
+        <h3>Customize Appearance</h3>
+        <p style="margin-top:4px; font-size:0.9em; color:#444">Change background and text colors. Settings persist locally.</p>
+
+        <label for="cust_bg">Page Background</label>
+        <input type="color" id="cust_bg" value="#f0f0f0">
+
+        <label for="cust_fg">Page Text Color</label>
+        <input type="color" id="cust_fg" value="#333333">
+
+        <label for="cust_main_bg">Main Panel Background</label>
+        <input type="color" id="cust_main_bg" value="#ffffff">
+
+        <label for="cust_main_fg">Main Panel Text Color</label>
+        <input type="color" id="cust_main_fg" value="#000000">
+
+        <div style="margin-top:12px; display:flex; align-items:center;">
+            <button class="save-btn" onclick="SaveTheme()">Save</button>
+            <button class="reset-btn" onclick="ResetTheme()">Reset</button>
+        </div>
+
+        <div style="margin-top:14px; font-size:0.85em; color:#666">Tip: Use sensible contrasts for readability.</div>
+    </div>
+
+    <!-- Benchmarks Sidebar -->
+    <div id="benchmarksSidebar" class="benchmarks-sidebar" aria-hidden="true">
+        <h3>CPU Benchmark Comparison</h3>
+        <p style="margin-top:4px; font-size:0.9em; color:#444">Your system's score vs. other CPUs (average runs).</p>
+        <canvas id="benchmarksChart" width="300" height="400"></canvas>
+        <p style="margin-top:12px; font-size:0.85em; color:#666">Chart shows single-core benchmark scores from various systems.</p>
+        <hr style="margin-top:14px; border:none; border-top:1px solid #eee;">
+        <h3 style="margin-top:12px;">Hardware Monitoring (Live)</h3>
+        <p style="margin-top:4px; font-size:0.9em; color:#444">Temperature, voltage, and core frequency (updates every second when available).</p>
+        <div style="font-size:0.85em; color:#666; margin-bottom:6px;">Data from Windows Performance Counters and hardware sensors.</div>
+        <div style="font-size:0.78em; color:#888; margin-bottom:8px;">
+            <strong>Note:</strong> Temperature/voltage sensors may not be available on all systems (especially laptops).
+        </div>
+        <canvas id="freqChart" width="300" height="120"></canvas>
+        <h4 style="margin-top:16px; color:#0056b3;">CPU Utilization</h4>
+        <canvas id="cpuChart" width="300" height="120"></canvas>
+        <h4 style="margin-top:16px; color:#0056b3;">RAM Usage</h4>
+        <canvas id="ramChart" width="300" height="120"></canvas>
+    </div>
+
+</body>
+</html>

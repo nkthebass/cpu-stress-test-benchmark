@@ -1,3 +1,7 @@
+# project files to ignore
+publish/
+packaging/Output/
+
 # macOS system files
 .DS_Store
 .AppleDouble
