@@ -1,21 +1,17 @@
-# CPU Utility Hybrid
+This is my first public project, I am attempting to make a simple, easy to use, and accurate CPU benchmarking, stress testing and hardware info program. The current release has a stress testing feture that supports 1,2,4,6,8,12,18,20,24 threaded CPUS the stress test is aiming to make a stressful enviorment for your cpu to test temps/ stability. The benchmarking feture currently uses Floating-Point Operations and Integer Operations and more! ↓↓↓
 
-Hybrid architecture combining C# GUI with native C++ performance:
-- **C# WinForms + WebView2**: UI layer (existing code)
-- **C++ Native DLL**: High-performance stress testing and hardware monitoring
+result[i] = std::sqrt(a * a + b * b); - Square root of sum of squares (Pythagorean)
 
-## Structure
-- `CSharpGUI/` - C# application (modified from original)
-- `NativeDLL/` - C++ DLL for stress & monitoring
-- `www/` - Shared web assets
+result[i] += std::sin(a) * std::cos(b); - Trigonometric operations
 
-## Building
-1. Build C++ DLL: Open `NativeDLL/NativeDLL.sln` in Visual Studio
-2. Build C# app: `dotnet build CSharpGUI/`
-3. DLL is automatically copied to output
+result[i] *= std::exp(std::log(a + 1.0)); - Exponential and logarithm
 
-## Benefits over Pure C#
-- 10-20x faster stress test performance
-- Direct CPU MSR access for temperature/voltage
-- Multi-threaded stress with minimal overhead
-- Still keeps familiar WebView2 UI
+intVal = (intVal * 0x5DEECE66DLL + 0xBLL) & ((1LL << 48) - 1); - Integer multiplication (LCG algorithm)
+
+intData[i] = static_cast(intVal >> 16); - Bit shifting
+
+std::swap(result[i], result[(i + 128) % size]); - Memory operations
+
+std::swap(intData[i], intData[(i + 256) % size]); - Cache stress
+
+I recently added a settings menu to change the color of the text/ background and will be implementing a spread sheat with data from cpus previously benchmarked to add relevancy to the score.
