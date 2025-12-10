@@ -1,4 +1,4 @@
-This is my first public project, I am attempting to make a simple, easy to use, and accurate CPU benchmarking, stress testing and hardware info program. The current release has a stress testing feture that supports 1,2,4,6,8,12,18,20,24 threaded CPUS the stress test is aiming to make a stressful enviorment for your cpu to test temps/ stability. The benchmarking feture currently uses Floating-Point Operations and Integer Operations and more! ↓↓↓
+This is my first public project, I am attempting to make a simple, easy to use, and accurate CPU benchmarking, stress testing and hardware info program. The current release has a stress testing feture that supports 1,2,4,6,8,12,18,20,24 threaded CPUS the stress test is aiming to make a stressful enviorment for your cpu to test temps/ stability. The benchmarking feture currently uses Floating-Point Operations and Integer Operations and more! ↓↓↓↓↓↓↓
 
 result[i] = std::sqrt(a * a + b * b); - Square root of sum of squares (Pythagorean)
 
