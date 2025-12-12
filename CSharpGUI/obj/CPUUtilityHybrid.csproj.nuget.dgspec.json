@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Noah\\3D Objects\\cpu utility hybrid\\CSharpGUI\\CPUUtilityHybrid.csproj": {}
+    "C:\\dev\\cpu-stress-test-benchmark\\CSharpGUI\\CPUUtilityHybrid.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Noah\\3D Objects\\cpu utility hybrid\\CSharpGUI\\CPUUtilityHybrid.csproj": {
+    "C:\\dev\\cpu-stress-test-benchmark\\CSharpGUI\\CPUUtilityHybrid.csproj": {
       "version": "1.4.1",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Noah\\3D Objects\\cpu utility hybrid\\CSharpGUI\\CPUUtilityHybrid.csproj",
+        "projectUniqueName": "C:\\dev\\cpu-stress-test-benchmark\\CSharpGUI\\CPUUtilityHybrid.csproj",
         "projectName": "XenoCPUUtility",
-        "projectPath": "C:\\Users\\Noah\\3D Objects\\cpu utility hybrid\\CSharpGUI\\CPUUtilityHybrid.csproj",
+        "projectPath": "C:\\dev\\cpu-stress-test-benchmark\\CSharpGUI\\CPUUtilityHybrid.csproj",
         "packagesPath": "C:\\Users\\Noah\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Noah\\3D Objects\\cpu utility hybrid\\CSharpGUI\\obj\\",
+        "outputPath": "C:\\dev\\cpu-stress-test-benchmark\\CSharpGUI\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Noah\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -70,10 +70,6 @@
               "version": "[7.0.20, 7.0.20]"
             },
             {
-              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-              "version": "[7.0.20, 7.0.20]"
-            },
-            {
               "name": "Microsoft.NETCore.App.Host.win-x64",
               "version": "[7.0.20, 7.0.20]"
             },
@@ -82,15 +78,7 @@
               "version": "[7.0.20, 7.0.20]"
             },
             {
-              "name": "Microsoft.NETCore.App.Runtime.win-x64",
-              "version": "[7.0.20, 7.0.20]"
-            },
-            {
               "name": "Microsoft.WindowsDesktop.App.Ref",
-              "version": "[7.0.20, 7.0.20]"
-            },
-            {
-              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
               "version": "[7.0.20, 7.0.20]"
             }
           ],
@@ -103,11 +91,6 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.100\\RuntimeIdentifierGraph.json"
-        }
-      },
-      "runtimes": {
-        "win-x64": {
-          "#import": []
         }
       }
     }

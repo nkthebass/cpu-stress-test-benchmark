@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Xeno CPU utility 1.3.0 - High-Performance Benchmark and Stress Test")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.4.1.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.4.1+1f695da04bcfeac9d5bda4faaa42bd7cc0a79622")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.4.1+27cbc16d6b35ee960a6bf7383480112cbacbab5f")]
 [assembly: System.Reflection.AssemblyProductAttribute("Xeno CPU utility 1.4.1")]
 [assembly: System.Reflection.AssemblyTitleAttribute("XenoCPUUtility")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.4.1.0")]

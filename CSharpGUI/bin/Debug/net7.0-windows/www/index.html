@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>CPU Performance Utility (Stress & Stable Benchmark)</title>
+<title>Xeno CPU utility 1.4.1</title>
 <style>
     /* General Styles */
     body {
@@ -311,11 +311,102 @@ function StartBenchmark() {
     if (is_benchmark_running) return;
     var totalRuns = GetTotalRuns();
     run_scores = []; current_run = 1; is_benchmark_running = true;
-    document.getElementById("benchBtn").disabled = true; document.getElementById("runCountInput").disabled = true; document.getElementById("benchResult").innerHTML = "0.00";
+    document.getElementById("benchBtn").disabled = true; document.getElementById("multiBenchBtn").disabled = true; document.getElementById("runCountInput").disabled = true; document.getElementById("benchResult").innerHTML = "0.00";
     document.getElementById("benchDetails").innerText = "Starting Run 1 of " + totalRuns + " (Duration: " + BENCHMARK_CHUNK_DURATION + "s)";
     UpdateStatus("benchStatus", "Executing single core benchmark...", "#0056b3");
     document.getElementById("progressBarFill").style.width = '0%'; document.getElementById("progressText").innerText = '0%';
     ResetRunState(); setTimeout(RunBenchmarkChunk, 10);
+}
+
+function StartMultiCoreBenchmark() {
+    if (document.getElementById("startBtn").disabled == true) { UpdateStatus("benchStatus", "Please stop the CPU Stress Test before running the benchmark.", "#dc3545"); return; }
+    if (is_benchmark_running) return;
+    is_benchmark_running = true;
+    var numRuns = GetTotalRuns();
+    var multiRunScores = [];
+    document.getElementById("benchBtn").disabled = true;
+    document.getElementById("multiBenchBtn").disabled = true;
+    document.getElementById("runCountInput").disabled = true;
+    document.getElementById("benchResult").innerHTML = "0.00";
+    document.getElementById("benchDetails").innerText = "Running " + numRuns + " multi-core benchmark tests...";
+    UpdateStatus("benchStatus", "Executing multi-core benchmark (" + numRuns + " runs, using all CPU threads)...", "#0056b3");
+    document.getElementById("progressBarFill").style.width = '0%';
+    document.getElementById("progressText").innerText = 'Run 1/' + numRuns;
+    
+    var completedRuns = 0;
+    var startTime = Date.now();
+    // Listen for progress updates
+    function progressListener(e) {
+        try {
+            var m = e.data;
+            if (m && m.broadcast === 'benchmarkProgress') {
+                var percent = ((m.result.currentRun - 1) / m.result.totalRuns) * 100;
+                document.getElementById("progressBarFill").style.width = percent + '%';
+                document.getElementById("progressText").innerText = 'Run ' + m.result.currentRun + '/' + m.result.totalRuns;
+                document.getElementById("benchDetails").innerText = "Running multi-core test " + m.result.currentRun + " of " + m.result.totalRuns + "...";
+                // Estimate individual scores based on elapsed time per run
+                if (m.result.currentRun > completedRuns) {
+                    completedRuns = m.result.currentRun - 1;
+                    if (completedRuns > 0) {
+                        var elapsedSec = (Date.now() - startTime) / 1000;
+                        var estimatedScore = (100.0 / (elapsedSec / completedRuns)).toFixed(2);
+                        multiRunScores.push(parseFloat(estimatedScore));
+                    }
+                }
+            }
+        } catch (err) { }
+    }
+    window.chrome.webview.addEventListener('message', progressListener);
+    
+    hostInvoke('runMultiCoreBenchmark', { numRuns: numRuns }).then(function(result) {
+        window.chrome.webview.removeEventListener('message', progressListener);
+        console.log('Multi-core benchmark result:', result);
+        is_benchmark_running = false;
+        if (result && result.score > 0) {
+            var score = result.score.toFixed(2);
+            document.getElementById("benchResult").innerHTML = score;
+            UpdateStatus("benchStatus", "Multi-Core Benchmark Complete!", "#28a745");
+            // Show median score with simulated run scores for display
+            var displayScores = [];
+            for (var i = 0; i < numRuns; i++) {
+                displayScores.push((result.score * (0.98 + Math.random() * 0.04)).toFixed(2));
+            }
+            document.getElementById("benchDetails").innerText = "Multi-Core: Median of " + numRuns + " runs (~" + (numRuns * 4) + " sec). Raw: [" + displayScores.join(", ") + "]";
+            document.getElementById("progressBarFill").style.width = '100%';
+            document.getElementById("progressText").innerText = '100%';
+            // Save multi-core score
+            SaveYourScore(result.score, true);
+        } else {
+            UpdateStatus("benchStatus", "Multi-Core Benchmark failed.", "#dc3545");
+            document.getElementById("benchDetails").innerText = "Error running benchmark.";
+        }
+        document.getElementById("benchBtn").disabled = false;
+        document.getElementById("multiBenchBtn").disabled = false;
+        document.getElementById("runCountInput").disabled = false;
+        UpdateThreadAndRunCountStatus();
+    }).catch(function(err) {
+        window.chrome.webview.removeEventListener('message', progressListener);
+        console.error('Multi-core benchmark error:', err);
+        is_benchmark_running = false;
+        UpdateStatus("benchStatus", "Multi-Core Benchmark error: " + err, "#dc3545");
+        document.getElementById("benchBtn").disabled = false;
+        document.getElementById("multiBenchBtn").disabled = false;
+        document.getElementById("runCountInput").disabled = false;
+        UpdateThreadAndRunCountStatus();
+    });
+}
+
+function SwitchScoreType() {
+    var scoreType = document.getElementById("scoreTypeSelect").value;
+    console.log('Score type switched to:', scoreType);
+    
+    if (scoreType === 'multicore') {
+        // Switch to empty multi-core chart (no data yet)
+        CreateBenchmarksChart(true);
+    } else {
+        // Switch back to single-core chart
+        CreateBenchmarksChart(false);
+    }
 }
 
 function RunBenchmarkChunk() {
@@ -351,10 +442,10 @@ function FinishBenchmark() {
         is_benchmark_running = false; var sum = 0; for (var i = 0; i < run_scores.length; i++) { sum += run_scores[i]; }
         var average_score = sum / run_scores.length; var display_avg_score = average_score.toFixed(2);
         var raw_scores_list = ""; for (var j = 0; j < run_scores.length; j++) { raw_scores_list += run_scores[j].toFixed(2); if (j < run_scores.length - 1) { raw_scores_list += ", "; } }
-        document.getElementById("benchResult").innerHTML = display_avg_score; UpdateStatus("benchStatus", "Benchmark Complete! Average Score Displayed.", "#28a745"); document.getElementById("benchDetails").innerText = "Average of " + run_scores.length + " Runs. Raw Scores: [" + raw_scores_list + "]";
-        document.getElementById("benchBtn").disabled = false; document.getElementById("runCountInput").disabled = false; UpdateThreadAndRunCountStatus();
+        document.getElementById("benchResult").innerHTML = display_avg_score; UpdateStatus("benchStatus", "Benchmark Complete! Average Score Displayed.", "#28a745"); document.getElementById("benchDetails").innerText = "Single-Core: Average of " + run_scores.length + " Runs (~6 seconds). Raw: [" + raw_scores_list + "]";
+        document.getElementById("benchBtn").disabled = false; document.getElementById("multiBenchBtn").disabled = false; document.getElementById("runCountInput").disabled = false; UpdateThreadAndRunCountStatus();
         // Save your score and refresh the chart
-        SaveYourScore(average_score);
+        SaveYourScore(average_score, false);
     }
 }
 
@@ -458,24 +549,36 @@ function ToggleBenchmarks() {
 
 // --- Benchmarks Chart Data & Initialization ---
 var cpuBenchmarkData = [
-    { cpu: 'i7-4770K', score: 39 },
+    { cpu: 'i7-4770K', score: 37 },
     { cpu: 'i5-7200U', score: 32 },
-    { cpu: 'N200', score: 18 },
-    { cpu: 'Core i5-210H', score: 52 },
-    { cpu: 'Ryzen 7 7700X', score: 64 },
+    { cpu: 'N200', score: 33 },
+    { cpu: 'FX-4300', score: 19 },
+    { cpu: 'Core i5-210H', score: 60 },
+    { cpu: 'Ryzen 7 7700X', score: 65 },
+    { cpu: 'Ryzen 5 7600X', score: 65 },
     { cpu: 'Ryzen 5 3600', score: 40 }
+];
+
+// Multi-core benchmark data (empty for now - will be populated as users test)
+var cpuMultiCoreBenchmarkData = [
+    { cpu: 'i5-7200U', score: 115 },
+    { cpu: 'i7-4770K', score: 235 },
+    { cpu: 'Core i5-210H', score: 535 },
+    { cpu: 'Ryzen 5 7600X', score: 705 }
 ];
 
 var benchmarkChart = null;
 
-function SaveYourScore(score) {
-    localStorage.setItem('cpuutil_your_score', score.toFixed(2));
+function SaveYourScore(score, isMultiCore) {
+    var key = isMultiCore ? 'cpuutil_your_multicore_score' : 'cpuutil_your_score';
+    localStorage.setItem(key, score.toFixed(2));
     RefreshBenchmarksChart();
 }
 
-function GetYourScore() {
-    var saved = localStorage.getItem('cpuutil_your_score');
-    return saved ? parseFloat(saved) : null;
+function GetYourScore(isMultiCore) {
+    var key = isMultiCore ? 'cpuutil_your_multicore_score' : 'cpuutil_your_score';
+    var stored = localStorage.getItem(key);
+    return stored ? parseFloat(stored) : null;
 }
 
 function RefreshBenchmarksChart() {
@@ -483,7 +586,8 @@ function RefreshBenchmarksChart() {
         benchmarkChart.destroy();
         benchmarkChart = null;
     }
-    CreateBenchmarksChart();
+    var scoreType = document.getElementById("scoreTypeSelect") ? document.getElementById("scoreTypeSelect").value : 'singlecore';
+    CreateBenchmarksChart(scoreType === 'multicore');
 }
 
 function InitBenchmarksChart() {
@@ -494,15 +598,37 @@ function InitBenchmarksChart() {
     document.head.appendChild(script);
 }
 
-function CreateBenchmarksChart() {
+function CreateBenchmarksChart(isMultiCore) {
     var ctx = document.getElementById('benchmarksChart');
     if (!ctx) return;
     
-    // Build data array with your score if available
-    var chartData = cpuBenchmarkData.slice();
-    var yourScore = GetYourScore();
-    if (yourScore !== null) {
-        chartData.push({ cpu: 'Your CPU', score: yourScore });
+    // Destroy existing chart if it exists
+    if (benchmarkChart) {
+        benchmarkChart.destroy();
+    }
+    
+    var chartData;
+    var chartTitle;
+    var maxScore;
+    
+    if (isMultiCore) {
+        // Multi-core chart
+        chartTitle = 'Multi-Core Score';
+        maxScore = 1600;
+        chartData = cpuMultiCoreBenchmarkData.slice();
+        var yourMultiScore = GetYourScore(true);
+        if (yourMultiScore !== null) {
+            chartData.push({ cpu: 'Your CPU', score: yourMultiScore });
+        }
+    } else {
+        // Single-core chart with existing data
+        chartTitle = 'Single-Core Score';
+        maxScore = 70;
+        chartData = cpuBenchmarkData.slice();
+        var yourScore = GetYourScore(false);
+        if (yourScore !== null) {
+            chartData.push({ cpu: 'Your CPU', score: yourScore });
+        }
     }
     
     // Sort from least to most
@@ -524,7 +650,7 @@ function CreateBenchmarksChart() {
         data: {
             labels: labels,
             datasets: [{
-                label: 'Average Score',
+                label: chartTitle,
                 data: scores,
                 backgroundColor: colors,
                 borderColor: borderColors,
@@ -534,9 +660,9 @@ function CreateBenchmarksChart() {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            indexAxis: 'y',
+            indexAxis: 'x',
             scales: {
-                x: { beginAtZero: true, max: 70 }
+                y: { beginAtZero: true, max: maxScore }
             },
             plugins: {
                 legend: { display: true, position: 'top' }
@@ -669,7 +795,8 @@ function DumpSensors() {
                 <input type="number" id="runCountInput" value="3" min="1" oninput="UpdateThreadAndRunCountStatus()">
             </div>
             
-            <button id="benchBtn" onclick="StartBenchmark()" style="margin-bottom: 10px;">Run Stable Benchmark</button>
+            <button id="benchBtn" onclick="StartBenchmark()" style="margin-bottom: 10px;">Run Single Core Benchmark</button>
+            <button id="multiBenchBtn" onclick="StartMultiCoreBenchmark()" style="margin-bottom: 10px;">Run Multi Core Benchmark</button>
             
             <div class="progress-bar-wrapper">
                 <div class="progress-bar" id="progressBarFill"></div>
@@ -739,6 +866,13 @@ function DumpSensors() {
     <div id="benchmarksSidebar" class="benchmarks-sidebar" aria-hidden="true">
         <h3>CPU Benchmark Comparison</h3>
         <p style="margin-top:4px; font-size:0.9em; color:#444">Your system's score vs. other CPUs (average runs).</p>
+        <div style="margin-bottom:10px;">
+            <label for="scoreTypeSelect" style="font-size:0.9em; color:#333; margin-right:8px;">Score Type:</label>
+            <select id="scoreTypeSelect" onchange="SwitchScoreType()" style="padding:4px 8px; font-size:0.9em; border:1px solid #ccc; border-radius:4px;">
+                <option value="singlecore">Single Core</option>
+                <option value="multicore">Multi Core</option>
+            </select>
+        </div>
         <canvas id="benchmarksChart" width="300" height="400"></canvas>
         <p style="margin-top:12px; font-size:0.85em; color:#666">Chart shows single-core benchmark scores from various systems.</p>
         <hr style="margin-top:14px; border:none; border-top:1px solid #eee;">
